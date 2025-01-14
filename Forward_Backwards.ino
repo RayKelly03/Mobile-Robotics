@@ -7,10 +7,10 @@ int motor2Phase = 20;
 // the setup routine runs once when you press reset:
 void setup() {
   Serial.begin(9600);
-  pinMode(motor1PWM,OUTPUT)
-  pinMode(motor1Phase,OUTPUT)
-  pinMode(motor2PWM,OUTPUT)
-  pinMode(motor2Phase,OUTPUT)
+  pinMode(motor1PWM,OUTPUT);
+  pinMode(motor1Phase,OUTPUT);
+  pinMode(motor2PWM,OUTPUT);
+  pinMode(motor2Phase,OUTPUT);
 }
 // the loop routine runs over and over again continuously:
 void loop() {
