@@ -12,18 +12,28 @@ void setup() {
   pinMode(motor2PWM,OUTPUT);
   pinMode(motor2Phase,OUTPUT);
 }
-// the loop routine runs over and over again continuously:
-void loop() {
+
+void Forward() {
+  digitalWrite(motor1Phase, LOW); //forward
+  digitalWrite(motor2Phase, LOW); 
+  analogWrite(motor1PWM, 100); // set speed of motor
+  analogWrite(motor2PWM, 100); // set speed of motor
+  Serial.println("Forward"); // Display motor direction
+}
+
+void Backward() {
   digitalWrite(motor1Phase, HIGH); //forward
   digitalWrite(motor2Phase, HIGH); 
   analogWrite(motor1PWM, 100); // set speed of motor
   analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Forward"); // Display motor direction
-  delay(2000); //2 seconds
-  digitalWrite(motor1Phase, LOW); //Backward
-  digitalWrite(motor2Phase, LOW); //Backward
-  analogWrite(motor1PWM, 100); // set speed of motor
-  analogWrite(motor2PWM, 100); // set speed of motor
   Serial.println("Backward"); // Display motor direction
+}
+
+// the loop routine runs over and over again continuously:
+void loop() {
+   Serial.begin(9600);
+  Forward();
+  delay(2000); //2 seconds
+  Backward();
   delay(2000); //2 seconds
 }
