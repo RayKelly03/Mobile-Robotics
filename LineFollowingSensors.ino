@@ -1,3 +1,4 @@
+
 int AnalogValue[5] = {0,0,0,0,0};
 int AnalogPin[5] = {4,5,6,7,15}; // keep 8 free for tone O/P music
 
@@ -62,22 +63,15 @@ void loop(){
   }
   while (AnalogValue[2] < 250) {
     Forward();
-    Stop(motor1PWM) ;
-    Stop(motor2PWM) ;
     AnalogValue[2]=analogRead(AnalogPin[2]); //middle Sensor
   } 
   while (AnalogValue[1] < 250) {
     Left();
-    Stop(motor1PWM) ;
-    Stop(motor2PWM) ;
     AnalogValue[1]=analogRead(AnalogPin[1]); //Left Sensor
   }
 
   while (AnalogValue[3] < 250) {
     Right();
-    Stop(motor1PWM) ;
-    Stop(motor2PWM) ;
     AnalogValue[3]=analogRead(AnalogPin[3]); //Right Sensor
   }
 }
-
