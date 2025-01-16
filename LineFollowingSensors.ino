@@ -56,18 +56,27 @@ void Forward() {
   digitalWrite(motor2Phase, LOW); 
   analogWrite(motor1PWM, 100); // set speed of motor
   analogWrite(motor2PWM, 100); // set speed of motor
+  Serial.println("Forward"); // Display motor direction
+}
+
+void Backward() {
+  digitalWrite(motor1Phase, HIGH); //forward
+  digitalWrite(motor2Phase, HIGH); 
+  analogWrite(motor1PWM, 100); // set speed of motor
+  analogWrite(motor2PWM, 100); // set speed of motor
+  Serial.println("Backward"); // Display motor direction
 }
 
 void Right() {
   digitalWrite(motor1Phase, LOW); 
+  digitalWrite(motor2Phase, HIGH);
   analogWrite(motor1PWM, 100); // set speed of motor
+  Serial.println("Right"); // Display motor direction
 }
 
 void Left() {
+  digitalWrite(motor1Phase, HIGH);
   digitalWrite(motor2Phase, LOW); 
   analogWrite(motor2PWM, 100); // set speed of motor
-}
-
-void Stop(int MotorPwm) {
-  analogWrite(MotorPwm, 0); 
+  Serial.println("Left"); // Display motor direction
 }
