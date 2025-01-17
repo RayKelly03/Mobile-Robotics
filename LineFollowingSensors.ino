@@ -6,35 +6,41 @@ int motor1PWM = 37;
 int motor1Phase = 38;
 int motor2PWM = 39;
 int motor2Phase = 20;
+int speed = 10 ;
+
 void Forward() {
   digitalWrite(motor1Phase, LOW); //forward
   digitalWrite(motor2Phase, LOW); 
-  analogWrite(motor1PWM, 100); // set speed of motor
-  analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Forward"); // Display motor direction
+  analogWrite(motor1PWM, speed); // set speed of motor
+  analogWrite(motor2PWM, speed); // set speed of motor
 }
 
 void Backward() {
   digitalWrite(motor1Phase, HIGH); //forward
   digitalWrite(motor2Phase, HIGH); 
-  analogWrite(motor1PWM, 100); // set speed of motor
-  analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Backward"); // Display motor direction
+  analogWrite(motor1PWM, speed); // set speed of motor
+  analogWrite(motor2PWM, speed); // set speed of motor
 }
 
 void Right() {
   digitalWrite(motor1Phase, LOW); 
   digitalWrite(motor2Phase, HIGH);
-  analogWrite(motor1PWM, 100); // set speed of motor
-  Serial.println("Right"); // Display motor direction
+  analogWrite(motor1PWM, speed);
+  analogWrite(motor2PWM, speed);
 }
 
 void Left() {
   digitalWrite(motor1Phase, HIGH);
-  digitalWrite(motor2Phase, LOW); 
-  analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Left"); // Display motor direction
+  digitalWrite(motor2Phase, LOW);
+  analogWrite(motor1PWM, speed);
+  analogWrite(motor2PWM, speed); // set speed of motor
 }
+
+void Stop() {
+  analogWrite(motor1PWM, 0);
+  analogWrite(motor2PWM, 0); 
+}
+
 
 void setup() {
     // put your setup code here, to run once:
@@ -62,16 +68,21 @@ void loop(){
     }
   }
   while (AnalogValue[2] < 250) {
+    Stop();
     Forward();
-    AnalogValue[2]=analogRead(AnalogPin[2]); //middle Sensor
+    AnalogValue[2]=analogRead(AnalogPin[2]);
+   
   } 
-  while (AnalogValue[1] < 250) {
+  while (AnalogValue[0] < 250) {
+    Stop();
     Left();
-    AnalogValue[1]=analogRead(AnalogPin[1]); //Left Sensor
+    AnalogValue[0]=analogRead(AnalogPin[0]);
+    
   }
 
-  while (AnalogValue[3] < 250) {
+  while (AnalogValue[4] < 250) {
+    Stop();
     Right();
-    AnalogValue[3]=analogRead(AnalogPin[3]); //Right Sensor
+    AnalogValue[4]=analogRead(AnalogPin[4]);
   }
 }
