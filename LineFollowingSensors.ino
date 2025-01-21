@@ -24,15 +24,15 @@ void Backward() {
 
 void Right() {
   digitalWrite(motor1Phase, LOW); 
-  digitalWrite(motor2Phase, HIGH);
+  digitalWrite(motor2Phase, LOW);
   analogWrite(motor1PWM, speed);
-  analogWrite(motor2PWM, speed);
+  analogWrite(motor2PWM, turnspeed);
 }
 
 void Left() {
-  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor1Phase, LOW);
   digitalWrite(motor2Phase, LOW);
-  analogWrite(motor1PWM, (speed*0.75));
+  analogWrite(motor1PWM, turnspeed);
   analogWrite(motor2PWM, speed); // set speed of motor
 }
 
