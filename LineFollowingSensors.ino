@@ -67,31 +67,29 @@ void loop() {
   }
 
   // Movement decision based on sensor readings
-  if (AnalogValue[2] < 250) { 
+  if (AnalogValue[2] < 300) { 
     Forward();
-    delay(50);
+    
     Serial.println("Moving Forward (Middle)");
   } 
-  else if (AnalogValue[1] < 250) {
+  else if (AnalogValue[1] < 300) {
     Left();
-    delay(50);
     Serial.println("Turning Left");
   } 
-  else if (AnalogValue[3] < 250) {
+  else if (AnalogValue[3] < 300) {
     Right();
-    delay(50);
     Serial.println("Turning Right");
   } 
-  else if(AnalogValue[4] < 250) {
+  else if(AnalogValue[4] < 300) {
     Right();
-    delay(50);
   }
-  else if(AnalogValue[0] < 250) {
+  else if(AnalogValue[0] < 300) {
     Left();
-    delay(50);
   }
   else {
     Stop();
     Serial.println("Stopped");
   }
+
+  delay(20);
 }
