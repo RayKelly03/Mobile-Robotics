@@ -1,0 +1,91 @@
+int AnalogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
+int AnalogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
+
+int motor1PWM = 37;    // Left motor speed
+int motor1Phase = 38;  // Left motor direction
+int motor2PWM = 39;    // Right motor speed
+int motor2Phase = 20;  // Right motor direction
+
+int speed = 100;       // Forward speed
+int turnSpeed = 75;    // Default turn speed
+int sharpTurnSpeed = 50;  // Faster speed for sharper turns
+
+void Forward() {
+  digitalWrite(motor1Phase, LOW);  // Move both motors forward
+  digitalWrite(motor2Phase, LOW);
+  analogWrite(motor1PWM, speed);
+  analogWrite(motor2PWM, speed);
+}
+
+void TurnLeftSmooth() {
+  digitalWrite(motor1Phase, LOW);      // Slow down left motor
+  digitalWrite(motor2Phase, LOW);      // Keep right motor at normal speed
+  analogWrite(motor1PWM, sharpTurnSpeed);  // Sharp turn left
+  analogWrite(motor2PWM, speed);       // Normal speed for right motor
+}
+
+void TurnRightSmooth() {
+  digitalWrite(motor1Phase, LOW);      // Keep left motor at normal speed
+  digitalWrite(motor2Phase, LOW);      // Slow down right motor
+  analogWrite(motor1PWM, speed);       // Normal speed for left motor
+  analogWrite(motor2PWM, sharpTurnSpeed);  // Sharp turn right
+}
+
+void Stop() {
+  analogWrite(motor1PWM, 0);  // Stop both motors
+  analogWrite(motor2PWM, 0);
+}
+
+void setup() {
+  Serial.begin(9600);  // Start serial communication
+
+  pinMode(motor1PWM, OUTPUT);  // Motor pins setup
+  pinMode(motor1Phase, OUTPUT);
+  pinMode(motor2PWM, OUTPUT);
+  pinMode(motor2Phase, OUTPUT);
+
+  for (int i = 0; i < 5; i++) {
+    pinMode(AnalogPin[i], INPUT);  // Sensor pins setup
+  }
+}
+
+void loop() {
+  // Read all sensor values
+  for (int i = 0; i < 5; i++) {
+    AnalogValue[i] = analogRead(AnalogPin[i]);
+    Serial.print(AnalogValue[i]);
+    Serial.print("\t");
+    if (i == 4) {
+      Serial.println("");  // New line after all readings
+      delay(100);
+    }
+  }
+
+  // Movement decision based on sensor readings
+  if (AnalogValue[2] < 300) {  // Center sensor detects white (on the line)
+    Forward();
+    Serial.println("Moving Forward");
+  }
+  else if (AnalogValue[1] < 300) {  // Left sensor detects white
+    TurnLeftSmooth();
+    Serial.println("Turning Left");
+  }
+  else if (AnalogValue[3] < 300) {  // Right sensor detects white
+    TurnRightSmooth();
+    Serial.println("Turning Right");
+  }
+  else if (AnalogValue[4] < 300) {  // Far-right sensor detects white
+    TurnRightSmooth();
+    Serial.println("Adjusting Right (Far Right Sensor)");
+  }
+  else if (AnalogValue[0] < 300) {  // Far-left sensor detects white
+    TurnLeftSmooth();
+    Serial.println("Adjusting Left (Far Left Sensor)");
+  }
+  else {
+    Stop();  // If no sensor detects white, stop the robot
+    Serial.println("Stopped");
+  }
+
+  delay(5);  // Small delay for smoother loop
+}
