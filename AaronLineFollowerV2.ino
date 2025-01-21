@@ -31,9 +31,12 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(LED_PIN, HIGH);
   calibrate();
+  digitalWrite(LED_PIN, LOW);
   delay(1000);
-
+}
+/*
   while (true) {
     // Case for a sharp left turn or right turn
     if (analogRead(pins[1]) < threshold[1] && analogRead(pins[4]) > threshold[4]) {
@@ -51,18 +54,23 @@ void loop() {
   }
 }
 
+*/
+
 // To be done later
 void pid() {
   // Placeholder for PID logic
 }
 
 // Spins the bot to calibrate thresholds for white and black surfaces
+////using new millis fucntion to better time the loops
 void calibrate() {
-  // Run the motors and calibrate min and max values
-  for (int i = 0; i < 3000; i++) {
-    motors.setM1Speed(100);
-    motors.setM2Speed(-100);
+  unsigned long startTime = millis();  // Record the start time
+  unsigned long calibrationDuration = 20000;  // Run calibration for 20 seconds
 
+  motors.setSpeeds(150, -150);  // Spin the bot continuously during calibration
+
+  while (millis() - startTime < calibrationDuration) {
+    // Update min and max sensor values
     for (int j = 0; j < numPins; j++) {
       int value = analogRead(pins[j]);
       if (value < minValues[j]) {
@@ -74,15 +82,23 @@ void calibrate() {
     }
   }
 
-  // Calculate thresholds and print them
+  // Calculate thresholds
   for (int i = 0; i < numPins; i++) {
     threshold[i] = (minValues[i] + maxValues[i]) / 2;
-    Serial.print(threshold[i]);
-    Serial.print("   ");
   }
-  Serial.println();
 
-  // Stop the motors
-  motors.setM1Speed(0);
-  motors.setM2Speed(0);
+  // Print min, max, and threshold values for each sensor
+  Serial.println("Calibration complete!");
+  for (int i = 0; i < numPins; i++) {
+    Serial.print("Sensor ");
+    Serial.print(i);
+    Serial.print(" - Min: ");
+    Serial.print(minValues[i]);
+    Serial.print(", Max: ");
+    Serial.print(maxValues[i]);
+    Serial.print(", Threshold: ");
+    Serial.println(threshold[i]);
+  }
+
+  motors.setSpeeds(0, 0);  // Stop the motors after calibration
 }
