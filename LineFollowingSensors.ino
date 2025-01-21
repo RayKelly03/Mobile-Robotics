@@ -6,7 +6,7 @@ int motor1PWM = 37;
 int motor1Phase = 38;
 int motor2PWM = 39;
 int motor2Phase = 20;
-int speed = 10 ;
+int speed = 100;
 
 void Forward() {
   digitalWrite(motor1Phase, LOW); //forward
@@ -32,7 +32,7 @@ void Right() {
 void Left() {
   digitalWrite(motor1Phase, HIGH);
   digitalWrite(motor2Phase, LOW);
-  analogWrite(motor1PWM, speed);
+  analogWrite(motor1PWM, (speed*0.75));
   analogWrite(motor2PWM, speed); // set speed of motor
 }
 
@@ -54,35 +54,44 @@ void setup() {
     }
 } 
 
-void loop(){
-  // put your main code here, to run repeatedly:
-  int i;
-  for (i=0;i<5;i++) {
-    AnalogValue[i]=analogRead(AnalogPin[i]);
-
-    Serial.print(AnalogValue[i]); // This prints the actual analog reading from the sensors
-    Serial.print("\t"); //tab over on screen
-    if(i==4) {
-      Serial.println(""); //carriage return
-      delay(600); // display new set of readings every 600mS
+void loop() {
+  // Update all sensor readings
+  for (int i = 0; i < 5; i++) {
+    AnalogValue[i] = analogRead(AnalogPin[i]);
+    Serial.print(AnalogValue[i]); // Print the sensor value
+    Serial.print("\t"); // Tab spacing
+    if (i == 4) {
+      Serial.println(""); // New line after all readings
+      delay(100); // Small delay for readability
     }
   }
-  while (AnalogValue[2] < 250) {
-    Stop();
-    Forward();
-    AnalogValue[2]=analogRead(AnalogPin[2]);
-   
-  } 
-  while (AnalogValue[0] < 250) {
-    Stop();
-    Left();
-    AnalogValue[0]=analogRead(AnalogPin[0]);
-    
-  }
 
-  while (AnalogValue[4] < 250) {
-    Stop();
+  // Movement decision based on sensor readings
+  if (AnalogValue[2] < 250) { 
+    Forward();
+    delay(50);
+    Serial.println("Moving Forward (Middle)");
+  } 
+  else if (AnalogValue[1] < 250) {
+    Left();
+    delay(50);
+    Serial.println("Turning Left");
+  } 
+  else if (AnalogValue[3] < 250) {
     Right();
-    AnalogValue[4]=analogRead(AnalogPin[4]);
+    delay(50);
+    Serial.println("Turning Right");
+  } 
+  else if(AnalogValue[4] < 250) {
+    Right();
+    delay(50);
+  }
+  else if(AnalogValue[0] < 250) {
+    Left();
+    delay(50);
+  }
+  else {
+    Stop();
+    Serial.println("Stopped");
   }
 }
