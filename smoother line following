@@ -7,8 +7,8 @@ int motor2PWM = 39;    // Right motor speed
 int motor2Phase = 20;  // Right motor direction
 
 int speed = 100;       // Forward speed
-int turnSpeed = 75;    // Default turn speed
-int sharpTurnSpeed = 50;  // Faster speed for sharper turns
+int turnSpeed = 50;    // Default turn speed
+int sharpTurnSpeed = 100;  // Faster speed for sharper turns
 
 void Forward() {
   digitalWrite(motor1Phase, LOW);  // Move both motors forward
@@ -20,7 +20,7 @@ void Forward() {
 void TurnLeftSmooth() {
   digitalWrite(motor1Phase, LOW);      // Slow down left motor
   digitalWrite(motor2Phase, LOW);      // Keep right motor at normal speed
-  analogWrite(motor1PWM, sharpTurnSpeed);  // Sharp turn left
+  analogWrite(motor1PWM, turnSpeed);  // Sharp turn left
   analogWrite(motor2PWM, speed);       // Normal speed for right motor
 }
 
@@ -28,8 +28,23 @@ void TurnRightSmooth() {
   digitalWrite(motor1Phase, LOW);      // Keep left motor at normal speed
   digitalWrite(motor2Phase, LOW);      // Slow down right motor
   analogWrite(motor1PWM, speed);       // Normal speed for left motor
-  analogWrite(motor2PWM, sharpTurnSpeed);  // Sharp turn right
+  analogWrite(motor2PWM, turnSpeed);  // Sharp turn right
 }
+
+void TurnLeftSharp() {
+  digitalWrite(motor1Phase, HIGH);      // Slow down left motor
+  digitalWrite(motor2Phase, LOW);      // Keep right motor at normal speed
+  analogWrite(motor1PWM, speed);  // Sharp turn left
+  analogWrite(motor2PWM, speed);       // Normal speed for right motor
+}
+
+void TurnRightSharp() {
+  digitalWrite(motor1Phase, LOW);      // Keep left motor at normal speed
+  digitalWrite(motor2Phase, HIGH);      // Slow down right motor
+  analogWrite(motor1PWM, speed);       // Normal speed for left motor
+  analogWrite(motor2PWM, speed);  // Sharp turn right
+}
+
 
 void Stop() {
   analogWrite(motor1PWM, 0);  // Stop both motors
@@ -61,6 +76,9 @@ void loop() {
     }
   }
 
+
+  
+
   // Movement decision based on sensor readings
   if (AnalogValue[2] < 300) {  // Center sensor detects white (on the line)
     Forward();
@@ -75,11 +93,11 @@ void loop() {
     Serial.println("Turning Right");
   }
   else if (AnalogValue[4] < 300) {  // Far-right sensor detects white
-    TurnRightSmooth();
+    TurnRightSharp();
     Serial.println("Adjusting Right (Far Right Sensor)");
   }
   else if (AnalogValue[0] < 300) {  // Far-left sensor detects white
-    TurnLeftSmooth();
+    TurnLeftSharp();
     Serial.println("Adjusting Left (Far Left Sensor)");
   }
   else {
@@ -87,5 +105,5 @@ void loop() {
     Serial.println("Stopped");
   }
 
-  delay(5);  // Small delay for smoother loop
+  delay(20);  // Small delay for smoother loop
 }
