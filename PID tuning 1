@@ -91,14 +91,14 @@ void pid(){
   LSP = Speed - PIDval;
   RSP = Speed + PIDval;
 
-  if (LSP > turnSpeed) {
-    LSP = turnSpeed;
+  if (LSP > Speed) {
+    LSP = Speed;
   }
   if (LSP < -0){
     LSP = -0;
   }
-  if (RSP > turnSpeed){
-    RSP = turnSpeed;
+  if (RSP > Speed){
+    RSP = Speed;
   }
   if (RSP < -0){
     RSP = -0;
@@ -137,7 +137,7 @@ void loop() {
 
   while (true) {
     // Case for a sharp left turn or right turn
-    /*
+    
     if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
       motors.setM1Speed(0);
       motors.setM2Speed(Speed);
@@ -145,14 +145,14 @@ void loop() {
       motors.setM1Speed(Speed);
       motors.setM2Speed(0);
     }
-*/
+
     // Regular line follow using PID or otherwise
     if (analogRead(pins[2]) < threshold[2]) {
 
       //Kp = 0.0006 * (1000 - analogRead(pins[2]));
-      //Kd = 0 * Kp; 
+      Kd = 0.5; 
       
-      Kp = 0.14; // Speed variable / (Max sensor Reading / 2)
+      Kp = 0.15; // Speed variable / (Max sensor Reading / 2)
       pid(); // To be implemented
 
 
