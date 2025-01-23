@@ -15,7 +15,7 @@ int minValues[5] = {0};
 int maxValues[5] = {0};
 int threshold[5] = {0};
 
-int Speed = 300; //standard speed
+int Speed = 400; //standard speed
 int turnSpeed = 400;
 int LSP = 0; // speed variables for setting through PID
 int RSP = 0;
@@ -81,10 +81,10 @@ void pid(){
   int error = (analogRead(pins[1])-analogRead(pins[3]));
 
   P = error;
-  //I = I + error;
+  I = I + error;
   D = error - previousError;
 
-  PIDval = (Kp * P) + (Ki * I) + (Kd * D) + 60; 
+  PIDval = (Kp * P) + (Ki * I) + (Kd * D) + 50; 
   // +60 is an offset value to bring the final PIDval to 0 when on the line
   previousError = error;
 
@@ -150,9 +150,9 @@ void loop() {
     if (analogRead(pins[2]) < threshold[2]) {
 
       //Kp = 0.0006 * (1000 - analogRead(pins[2]));
-      Kd = 0.5; 
-      
-      Kp = 0.15; // Speed variable / (Max sensor Reading / 2)
+      Kd = 0.7; 
+      Ki = 0.0001;
+      Kp = 0.14; // Speed variable / (Max sensor Reading / 2)
       pid(); // To be implemented
 
 
