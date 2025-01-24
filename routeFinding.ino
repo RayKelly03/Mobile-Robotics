@@ -19,7 +19,7 @@ class Graph {
         adjMatrix[v][w] = weight;
       }
       else {
-            Serial.println("Error: Vertex out of bounds!"); // Inform the user
+            Serial.println("Error: Vertex out of bounds")
         }
     }
 
@@ -42,8 +42,8 @@ void setup() {
     Graph g;
     g.addEdge(0, 1, 4);
     g.addEdge(1, 2, 8);
-    g.addEdge(6, 5, 10); // Valid edge
-    g.addEdge(7, 0, 12); // Out of bounds edge
+    g.addEdge(6, 5, 10); 
+    g.addEdge(7, 0, 12); 
 
     Serial.println("Adjacency Matrix:\n");
     g.displayMatrix();
