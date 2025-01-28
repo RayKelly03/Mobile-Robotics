@@ -3,7 +3,6 @@
 #include <limits.h>
 #include <DRV8835MotorShield.h>
 
-
 #define M1PWM 37
 #define M1Phase 38
 #define M2PWM 39  
@@ -24,6 +23,7 @@ float yaw = 0;
 int Inf = INT_MAX;
 int prev = -1;
 int next = -1;
+int route[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
@@ -157,18 +157,21 @@ class Graph {
         Serial.print("\t");
         Serial.print(dist[dest]);
         Serial.print("\t\t");
-        printPath(parent, dest);
+        int index = 0;
+        printPath(parent, dest, route, index);
         Serial.println();
     }
 
 
     // Prints the shortest path - uses parent array
-    void printPath(int parent[], int j) {
+    void printPath(int parent[], int j, int route[], int &index) {
         if (parent[j] == -1) {
+            route[index++] = j;
             Serial.print(j);
             return;
         }
-        printPath(parent, parent[j]);
+        printPath(parent, parent[j], route, index);
+        route[index++] = j;
         Serial.print(" -> ");
         Serial.print(j);
     }
@@ -289,9 +292,8 @@ void followLine() {
 
 
 void path(int yaw, int prev, int next) {
-  if(next == 0 && prev == 6){
-    //setGyroAng(0);
-  
+  if(next == 6 && prev == 0){
+    setGyroAng(0);
     while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
       followLine();
   
@@ -301,9 +303,8 @@ void path(int yaw, int prev, int next) {
     }
   }
 
-  else if(next == 6 && prev == 0){
-    //setGyroAng(180);
-  
+  else if(next == 0 && prev == 6){
+    setGyroAng(90); // positive angle for right turn, negative angle for left turn?
     while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
       followLine();
   
@@ -313,9 +314,164 @@ void path(int yaw, int prev, int next) {
     }
   }
 
-  else if(next == 1 && prev == 0){
-    //setGyroAng(180);
+  else if(next == 1 && prev == 6){
+    setGyroAng(180);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
   
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 6 && prev == 1){
+    setGyroAng(180);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 1 && prev == 7){
+    setGyroAng(0);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 7 && prev == 1){
+    setGyroAng(0);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 0 && prev == 4){
+    setGyroAng(0);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 4 && prev == 0){
+    setGyroAng(180);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 2 && prev == 6){
+    setGyroAng(-90);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 6 && prev == 2){
+    setGyroAng(0);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 3 && prev == 2){
+    setGyroAng(0);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 2 && prev == 3){
+    setGyroAng(180);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 3 && prev == 7){
+    setGyroAng(180);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 7 && prev == 3){
+    setGyroAng(-90);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 7 && prev == 4){
+    setGyroAng(90);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 4 && prev == 7){
+    setGyroAng(180);
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
+      followLine();
+  
+      //if (frontSensor > 300) {
+        //removeEdgeRedirect();
+      //}
+    }
+  }
+
+  else if(next == 5 && prev == 7){
+    setGyroAng(180);
+    
+    // Insert Parking Code Here
     while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
       followLine();
   
@@ -340,14 +496,23 @@ void removeEdgeRedirect(int gyroAngle, int prev,int next, Graph g) {
   //path(prev, next);
   
 }
+*/
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setGyroAng(int angle) {
-  while(yaw != angle) {
-    TurnRightSharp();
+  while(yaw >= (angle-10) && yaw <= (angle + 10)) {
+    if(yaw > angle) {
+      motors.setM1Speed(100);
+      motors.setM2Speed(-100);
+  }
+    else if(yaw < angle) {
+      motors.setM1Speed(-100);
+      motors.setM2Speed(100);
+    }
   }
 }
-*/
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -355,14 +520,14 @@ void setup() {
     Serial.begin(115200);
   
     Graph g; // Creates Graph
-    g.addEdge(0, 6, 1);
-    g.addEdge(0, 4, 1);
-    g.addEdge(1, 6, 1);
-    g.addEdge(1, 7, 1);
-    g.addEdge(2, 6, 1);
-    g.addEdge(2, 3, 1);
-    g.addEdge(3, 7, 1);
-    g.addEdge(4, 7, 1);
+    g.addEdge(0, 6, 78);
+    g.addEdge(0, 4, 80);
+    g.addEdge(1, 6, 60);
+    g.addEdge(1, 7, 23);
+    g.addEdge(2, 6, 78);
+    g.addEdge(2, 3, 80);
+    g.addEdge(3, 7, 150);
+    g.addEdge(4, 7, 150);
     g.addEdge(7, 5, 1);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
 
     Serial.print("Adjacency Matrix:");
@@ -402,9 +567,6 @@ void setup() {
 void loop() {
     timer = millis();
     Vector normGyro = mpu.readNormalizeGyro();
-    // Calculate Pitch, Roll, and Yaw
-    //pitch = pitch + norm.YAxis * timeStep;
-    //roll = roll + norm.XAxis * timeStep;
     yaw = yaw + normGyro.ZAxis * timeStep;
 
     Serial.print(" Yaw = ");
@@ -412,6 +574,8 @@ void loop() {
 
     // Wait for full timeStep period
     delay((timeStep * 1000) - (millis() - timer));
+
+
     for (int i = 0; i < 5; i++) {
       analogValue[i] = analogRead(analogPin[i]);
       Serial.print(analogValue[i]);
@@ -420,6 +584,5 @@ void loop() {
         Serial.println("");  // New line after all readings
         delay(100);
     }
-
   }
 }
