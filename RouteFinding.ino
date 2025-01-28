@@ -401,11 +401,7 @@ void setup() {
 
 void loop() {
     timer = millis();
-
-    Serial.print("Before Normalised");
     Vector normGyro = mpu.readNormalizeGyro();
-    Serial.print("After Normalised");
-
     // Calculate Pitch, Roll, and Yaw
     //pitch = pitch + norm.YAxis * timeStep;
     //roll = roll + norm.XAxis * timeStep;
