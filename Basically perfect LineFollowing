@@ -1,7 +1,7 @@
 #include <DRV8835MotorShield.h>
 
 // Pin definitions
-#define LED_PIN 39
+#define LED_PIN 48 //may be used later
 #define M1PWM 37
 #define M1Phase 38
 #define M2PWM 39  
@@ -127,37 +127,31 @@ void setup() {
     minValues[i] = analogRead(pins[i]);
     maxValues[i] = analogRead(pins[i]);
   }
+  calibrate() ;
+  delay(1000);
 }
 
 void loop() {
-  digitalWrite(LED_PIN, HIGH);
-  calibrate();
-  digitalWrite(LED_PIN, LOW);
-  delay(1000);
 
-  while (true) {
-    // Case for a sharp left turn or right turn
+  // Case for a sharp left turn or right turn
     
-    if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
-      motors.setM1Speed(50);
-      motors.setM2Speed(turnSpeed);
+  if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
+    motors.setM1Speed(50);
+    motors.setM2Speed(turnSpeed);
 
-    } 
-    else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
-      motors.setM1Speed(turnSpeed);
-      motors.setM2Speed(50);
-    }
+  } 
+  else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
+    motors.setM1Speed(turnSpeed);
+    motors.setM2Speed(50);
+  }
 
-    // Regular line follow using PID or otherwise
-    if (analogRead(pins[2]) < threshold[2]) {
+  // Regular line follow using PID or otherwise
+  else if (analogRead(pins[2]) < threshold[2]) {
 
-      //Kp = 0.0006 * (1000 - analogRead(pins[2]));
-      Kd = 0.025; 
-      Ki = 0.0001;
-      Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
-      pid(); // To be implemented
-
-
-    }
+    //Kp = 0.0006 * (1000 - analogRead(pins[2]));
+    Kd = 0.025; 
+    Ki = 0.0001;
+    Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
+    pid(); // To be implemented
   }
 }
