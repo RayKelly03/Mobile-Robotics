@@ -1,7 +1,7 @@
 #include <DRV8835MotorShield.h>
 
 // Pin definitions
-#define LED_PIN 48 //may be used later
+#define LED_PIN 39
 #define M1PWM 37
 #define M1Phase 38
 #define M2PWM 39  
@@ -35,6 +35,25 @@ int error = 0;
 float Kp = 0;
 float Ki = 0;
 float Kd= 0;
+
+//Distance sensor
+const int sensorPin = 16; // Analog pin 16 for the sensor
+
+// Threshold distance in cm to detect an obstacle
+const float thresholdDistance = 2.0; 
+
+// Function to convert the sensor reading to distance in centimeters
+float getDistanceCM(int sensorValue) {
+  // Convert the analog reading to voltage ( 5V reference)
+  float voltage = sensorValue * (5.0 / 1023.0);
+
+  if (voltage > 0.42) { // Avoid division by zero or invalid values
+    return 27.86 / (voltage - 0.42); //0.42 V value is the approximate minimum voltage output
+  } else {
+    return -1; // Return -1 to indicate out-of-range or invalid reading
+  }
+}
+
 
 // Spins the bot to calibrate thresholds for white and black surfaces
 void calibrate() {
@@ -106,7 +125,7 @@ void pid(){
   motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
 
   // Debugging output
-  // Debugging output
+  /* Debugging output
   Serial.print("Error: "); Serial.print(error);
   Serial.print(", P: "); Serial.print(P);
   Serial.print(", Kp: "); Serial.print(Kp);
@@ -116,6 +135,7 @@ void pid(){
   Serial.print(", LSP: "); Serial.print(LSP);
   Serial.print(", RSP: "); Serial.println(RSP);
   Serial.print(", PIDval: "); Serial.println(PIDval);
+  */
 }
 
 void setup() {
@@ -127,31 +147,71 @@ void setup() {
     minValues[i] = analogRead(pins[i]);
     maxValues[i] = analogRead(pins[i]);
   }
-  calibrate() ;
+  calibrate();
   delay(1000);
 }
 
 void loop() {
+  int sensorValue = analogRead(sensorPin); // Read the analog value
+  float distanceCM = getDistanceCM(sensorValue); // Convert to distance in cm
 
+  // Print the distance for debugging
+  Serial.print("Distance (cm): ");
+  if (distanceCM > 0 && distanceCM <= 60) { // Valid range
+    Serial.println(distanceCM); // Print the valid distance
+
+    // Check if the distance is below the threshold
+    if (distanceCM <= thresholdDistance) {
+      Serial.println("Obstacle detected! Stopping...");
+    } 
+    else {
+      Serial.println("All clear, moving...");
+    }
+  } 
+  else {
+  Serial.println("Out of range or invalid reading"); // Invalid reading
+  }
   // Case for a sharp left turn or right turn
-    
+  //Left turn
   if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
     motors.setM1Speed(50);
     motors.setM2Speed(turnSpeed);
-
   } 
+  //Right turn
   else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
     motors.setM1Speed(turnSpeed);
     motors.setM2Speed(50);
   }
+  //NODE Code
+  else if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
 
-  // Regular line follow using PID or otherwise
+    Serial.print("Node ");
+    //Code to make it turn right 180d over the line
+    //motors.setSpeeds(400, 400); // incase speed value is changed
+    motors.setSpeeds(0, 0); //stop
+    delay(400); //another delay just cause
+    motors.setSpeeds(300, 300);
+    delay(500);
+  }
+   // Regular line follow using PID or otherwise
   else if (analogRead(pins[2]) < threshold[2]) {
-
     //Kp = 0.0006 * (1000 - analogRead(pins[2]));
     Kd = 0.025; 
     Ki = 0.0001;
     Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
     pid(); // To be implemented
+  }
+    //Distance sensor detection
+  if (distanceCM <= thresholdDistance) {
+    //Code to make it turn right 180d over the line
+    motors.setSpeeds(0, 0); //stop
+    delay(500); //just a pause
+    motors.setM1Speed(turnSpeed); // turn right 
+    motors.setM2Speed(-turnSpeed);
+    delay(1000); //keep turning for 1 second (time it takes to do a 180)
+    motors.setSpeeds(0, 0); //stops `
+    motors.setSpeeds(300, 300);
+    delay(500); //another delay just cause 
+  
   }
 }
