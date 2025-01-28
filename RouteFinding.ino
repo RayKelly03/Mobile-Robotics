@@ -221,7 +221,7 @@ void path(int yaw, int prev, int next) {
   if(next == 0 && prev == 6){
     //setGyroAng(0);
   
-    while(analogValue[0], analogValue[1], analogValue[2], analogValue[3], analogValue[4] > 300) {
+    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
       followLine();
   
       //if (frontSensor > 300) {
