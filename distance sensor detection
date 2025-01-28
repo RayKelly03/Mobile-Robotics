@@ -1,0 +1,57 @@
+const int sensorPin = 16; // Analog pin 16 for the sensor
+
+// Threshold distance in cm to detect an obstacle
+const float thresholdDistance = 3.0; 
+
+// Function to convert the sensor reading to distance in centimeters
+float getDistanceCM(int sensorValue) {
+  // Convert the analog reading to voltage ( 5V reference)
+  float voltage = sensorValue * (5.0 / 1023.0);
+
+
+  if (voltage > 0.42) { // Avoid division by zero or invalid values
+    return 27.86 / (voltage - 0.42); //0.42 V value is the approximate minimum voltage output
+  } else {
+    return -1; // Return -1 to indicate out-of-range or invalid reading
+  }
+}
+
+void setup() {
+  Serial.begin(9600); // Initialize serial communication
+}
+
+void loop() {
+  int sensorValue = analogRead(sensorPin); // Read the analog value
+  float distanceCM = getDistanceCM(sensorValue); // Convert to distance in cm
+
+  // Print the distance for debugging
+  Serial.print("Distance (cm): ");
+  if (distanceCM > 0 && distanceCM <= 60) { // Valid range
+    Serial.println(distanceCM); // Print the valid distance
+
+    // Check if the distance is below the threshold
+    if (distanceCM <= thresholdDistance) {
+      Serial.println("Obstacle detected! Stopping...");
+      stopSystem();
+    } else {
+      Serial.println("All clear, moving...");
+      runSystem();
+    }
+
+  } else {
+    Serial.println("Out of range or invalid reading"); // Invalid reading
+  }
+
+  delay(800); //  delay that can be changed  for serial output
+}
+
+// Function to stop the system
+void stopSystem() {
+  Serial.println("System Stopped!"); / / Placeholder for stopping the system
+}
+
+// Function to keep the system running
+void runSystem() {
+  Serial.println("System Running...");   // Placeholder for running the system
+}
+
