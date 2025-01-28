@@ -3,7 +3,6 @@
 #include <limits.h>
 #include <DRV8835MotorShield.h>
 
-#define LED_PIN 48 //may be used later
 
 #define M1PWM 37
 #define M1Phase 38
@@ -20,9 +19,7 @@ MPU6050 mpu;
 unsigned long timer = 0;
 float timeStep = 0.01;
 
-float pitch = 0;
-float roll = 0;
-unsigned int yaw = 0;
+float yaw = 0;
 
 int Inf = INT_MAX;
 int prev = -1;
@@ -388,8 +385,6 @@ void setup() {
 
     mpu.calibrateGyro();  // Calibrate gyroscope
     mpu.setThreshold(3); // Set threshold sensitivity
-
-    pinMode(LED_PIN, OUTPUT);
     Serial.begin(115200); //VERY IMPORTNAT//////
   
     // Assign initial values to min and max
@@ -408,7 +403,6 @@ void loop() {
     timer = millis();
 
     Serial.print("Before Normalised");
-    Vector rawGyro = mpu.readRawGyro();
     Vector normGyro = mpu.readNormalizeGyro();
     Serial.print("After Normalised");
 
@@ -431,6 +425,5 @@ void loop() {
         delay(100);
     }
 
-    followLine();
   }
 }
