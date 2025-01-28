@@ -139,12 +139,13 @@ void loop() {
     // Case for a sharp left turn or right turn
     
     if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
-      motors.setM1Speed(0);
-      //raymond's penits mhmmmm
+      motors.setM1Speed(50);
       motors.setM2Speed(turnSpeed);
-    } else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
+
+    } 
+    else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
       motors.setM1Speed(turnSpeed);
-      motors.setM2Speed(0);
+      motors.setM2Speed(50);
     }
 
     // Regular line follow using PID or otherwise
