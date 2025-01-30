@@ -40,7 +40,11 @@ float Kd= 0;
 const int sensorPin = 16; // Analog pin 16 for the sensor
 
 // Threshold distance in cm to detect an obstacle
-const float thresholdDistance = 2.0; 
+const float thresholdDistance = 3.0; 
+
+//multiple detections to avoid false alarms
+int detectCount = 0;
+int nodeCount = 0;
 
 // Function to convert the sensor reading to distance in centimeters
 float getDistanceCM(int sensorValue) {
@@ -139,6 +143,7 @@ void pid(){
 }
 
 void setup() {
+  Serial.println("Starting setup..."); // ADD THIS LINE
   pinMode(LED_PIN, OUTPUT);
   Serial.begin(115200); //VERY IMPORTNAT//////
 
@@ -148,6 +153,7 @@ void setup() {
     maxValues[i] = analogRead(pins[i]);
   }
   calibrate();
+  Serial.println("Setup complete!");
   delay(1000);
 }
 
@@ -156,23 +162,23 @@ void loop() {
   float distanceCM = getDistanceCM(sensorValue); // Convert to distance in cm
 
   // Print the distance for debugging
-  Serial.print("Distance (cm): ");
+//  Serial.print("Distance (cm): ");
   if (distanceCM > 0 && distanceCM <= 60) { // Valid range
-    Serial.println(distanceCM); // Print the valid distance
+//    Serial.println(distanceCM); // Print the valid distance
 
     // Check if the distance is below the threshold
     if (distanceCM <= thresholdDistance) {
       Serial.println("Obstacle detected! Stopping...");
     } 
     else {
-      Serial.println("All clear, moving...");
+//      Serial.println("All clear, moving...");
     }
   } 
   else {
-  Serial.println("Out of range or invalid reading"); // Invalid reading
+    Serial.println("Out of range or invalid reading"); // Invalid reading
   }
   // Case for a sharp left turn or right turn
-  //Left turn
+  // Left turn
   if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
     motors.setM1Speed(50);
     motors.setM2Speed(turnSpeed);
@@ -184,15 +190,45 @@ void loop() {
   }
   //NODE Code
   else if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
-
-    Serial.print("Node ");
-    //Code to make it turn right 180d over the line
-    //motors.setSpeeds(400, 400); // incase speed value is changed
-    motors.setSpeeds(0, 0); //stop
-    delay(400); //another delay just cause
-    motors.setSpeeds(300, 300);
-    delay(500);
+    if (nodeCount==2){ // at 3rd junction turn
+      motors.setSpeeds(400, 400); //stop
+      delay(300); //just a pause
+      motors.setSpeeds(0, 0); //stop
+      delay(500); //just a pause
+      motors.setM1Speed(-turnSpeed); // turn left 
+      motors.setM2Speed(turnSpeed);
+      delay(500); //keep turning for 1 second (time it takes to do a 180)
+      motors.setSpeeds(0, 0); //stops `
+      motors.setSpeeds(300, 300);
+      Serial.println("1ST TURN          ");
+      nodeCount++;
+    }
+    else if (nodeCount==4){ // at 5th junction - turn
+      
+      motors.setSpeeds(0, 0); //stop
+      delay(500); //just a pause
+      motors.setM1Speed(-turnSpeed); // turn left 
+      motors.setM2Speed(turnSpeed);
+      delay(500); //keep turning for 1 second (time it takes to do a 180)
+      motors.setSpeeds(0, 0); //stops `
+      motors.setSpeeds(300, 300);
+      nodeCount = 0;
+      Serial.println("2ND TURN     ");
+      Serial.println("RESET        ");
+    }
+    else{
+      Serial.print("Node ");
+      //Code to make it turn right 180d over the line
+      motors.setSpeeds(400, 400); // incase speed value is changed
+      motors.setSpeeds(0, 0); //stop
+      delay(600); //another delay just cause
+      motors.setSpeeds(300, 300);
+      delay(400);
+      nodeCount++;
+    }
   }
+
+
    // Regular line follow using PID or otherwise
   else if (analogRead(pins[2]) < threshold[2]) {
     //Kp = 0.0006 * (1000 - analogRead(pins[2]));
@@ -202,16 +238,23 @@ void loop() {
     pid(); // To be implemented
   }
     //Distance sensor detection
-  if (distanceCM <= thresholdDistance) {
-    //Code to make it turn right 180d over the line
-    motors.setSpeeds(0, 0); //stop
-    delay(500); //just a pause
-    motors.setM1Speed(turnSpeed); // turn right 
-    motors.setM2Speed(-turnSpeed);
-    delay(1000); //keep turning for 1 second (time it takes to do a 180)
-    motors.setSpeeds(0, 0); //stops `
-    motors.setSpeeds(300, 300);
-    delay(500); //another delay just cause 
-  
+
+  if (distanceCM > 0 && distanceCM <= thresholdDistance) {  
+    detectCount++;  // Increment detection count
+    Serial.println("count++");
+
+    if (detectCount >=20 ) {
+      //Code to make it turn right 180d over the line
+      Serial.print("AHHHH OBSTACLEEE ");
+      motors.setSpeeds(0, 0); //stop
+      delay(500); //just a pause
+      motors.setM1Speed(turnSpeed); // turn right 
+      motors.setM2Speed(-turnSpeed);
+      delay(1000); //keep turning for 1 second (time it takes to do a 180)
+      motors.setSpeeds(0, 0); //stops `
+      motors.setSpeeds(300, 300);
+      delay(500); //another delay just cause
+      detectCount = 0; 
+    }
   }
 }
