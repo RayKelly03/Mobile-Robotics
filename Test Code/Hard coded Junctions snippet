@@ -1,0 +1,40 @@
+/NODE Code
+  else if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
+    if (nodeCount==2){ // at 3rd junction turn
+      motors.setSpeeds(400, 400); //stop
+      delay(200); //just a pause
+      motors.setSpeeds(0, 0); //stop
+      delay(500); //just a pause
+      motors.setM1Speed(-turnSpeed); // turn left 
+      motors.setM2Speed(turnSpeed);
+      delay(500); //keep turning for 1 second (time it takes to do a 180)
+      motors.setSpeeds(0, 0); //stops `
+      motors.setSpeeds(300, 300);
+      Serial.println("1ST TURN          ");
+      nodeCount++;
+    }
+    else if (nodeCount==4){ // at 5th junction - turn+
+      motors.setSpeeds(400, 400); //stop
+      delay(200); //just a pause
+      motors.setSpeeds(0, 0); //stop
+      delay(500); //just a pause
+      motors.setM1Speed(-turnSpeed); // turn left 
+      motors.setM2Speed(turnSpeed);
+      delay(500); //keep turning for 1 second (time it takes to do a 180)
+      motors.setSpeeds(0, 0); //stops `
+      motors.setSpeeds(300, 300);
+      nodeCount = 0;
+      Serial.println("2ND TURN     ");
+      Serial.println("RESET        ");
+    }
+    else{
+      Serial.print("Node ");
+      //Code to make it turn right 180d over the line
+      motors.setSpeeds(400, 400); // incase speed value is changed
+      motors.setSpeeds(0, 0); //stop
+      delay(600); //another delay just cause
+      motors.setSpeeds(300, 300);
+      delay(400);
+      nodeCount++;
+    }
+  }
