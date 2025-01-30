@@ -1,0 +1,61 @@
+#include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+// I2C OLED Pins (ESP32-S3)
+#define I2C_SDA 13
+#define I2C_SCL 14
+
+// OLED Display Config
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+// Sharp Distance Sensor (Analog Input on GPIO16)
+#define SENSOR_PIN 16  
+
+// Threshold for obstacle detection (adjust based on actual sensor values)
+#define OBSTACLE_THRESHOLD 1500  // Change this value after checking Serial Monitor
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(I2C_SDA, I2C_SCL);
+
+  // Initialize OLED
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;);
+  }
+
+  // Show startup message
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+  display.println("Starting...");
+  display.display();
+  delay(2000);
+}
+
+void loop() {
+  int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
+  Serial.print("Sensor Value: ");  
+  Serial.println(sensorValue);  // Print value to Serial Monitor
+
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+
+  // Adjust display based on sensor value
+  if (sensorValue > OBSTACLE_THRESHOLD) {
+    display.println("Obstacle!");
+    Serial.println("Obstacle detected!");
+  } else {
+    display.println("Running...");
+    Serial.println("No obstacle detected.");
+  }
+
+  display.display();
+  delay(1000);  // Increase delay for stable readings
+}
