@@ -129,7 +129,7 @@ void pid(){
   motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
 
   // Debugging output
-  /* Debugging output
+  
   Serial.print("Error: "); Serial.print(error);
   Serial.print(", P: "); Serial.print(P);
   Serial.print(", Kp: "); Serial.print(Kp);
@@ -139,7 +139,7 @@ void pid(){
   Serial.print(", LSP: "); Serial.print(LSP);
   Serial.print(", RSP: "); Serial.println(RSP);
   Serial.print(", PIDval: "); Serial.println(PIDval);
-  */
+  
 }
 
 void setup() {
@@ -168,7 +168,7 @@ void loop() {
 
     // Check if the distance is below the threshold
     if (distanceCM <= thresholdDistance) {
-      Serial.println("Obstacle detected! Stopping...");
+      //Serial.println("Obstacle detected! Stopping...");
     } 
     else {
 //      Serial.println("All clear, moving...");
@@ -192,7 +192,7 @@ void loop() {
   else if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
     if (nodeCount==2){ // at 3rd junction turn
       motors.setSpeeds(400, 400); //stop
-      delay(300); //just a pause
+      delay(200); //just a pause
       motors.setSpeeds(0, 0); //stop
       delay(500); //just a pause
       motors.setM1Speed(-turnSpeed); // turn left 
@@ -203,8 +203,9 @@ void loop() {
       Serial.println("1ST TURN          ");
       nodeCount++;
     }
-    else if (nodeCount==4){ // at 5th junction - turn
-      
+    else if (nodeCount==4){ // at 5th junction - turn+
+      motors.setSpeeds(400, 400); //stop
+      delay(200); //just a pause
       motors.setSpeeds(0, 0); //stop
       delay(500); //just a pause
       motors.setM1Speed(-turnSpeed); // turn left 
@@ -243,7 +244,7 @@ void loop() {
     detectCount++;  // Increment detection count
     Serial.println("count++");
 
-    if (detectCount >=20 ) {
+    if (detectCount >=10 ) {
       //Code to make it turn right 180d over the line
       Serial.print("AHHHH OBSTACLEEE ");
       motors.setSpeeds(0, 0); //stop
