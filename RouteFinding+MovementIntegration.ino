@@ -502,8 +502,9 @@ void removeEdgeRedirect(int gyroAngle, int prev,int next, Graph g) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+/*
 void setGyroAng(int angle) {
-  while(yaw <= abs(angle-10) || yaw >= abs(angle + 10)) {
+  while(abs(yaw) <= abs(angle-5) || abs(yaw) >= abs(angle + 5)) {
     if(yaw > angle) {
       motors.setM1Speed(100);
       motors.setM2Speed(-100);
@@ -512,8 +513,56 @@ void setGyroAng(int angle) {
       motors.setM1Speed(-100);
       motors.setM2Speed(100);
     }
+  Serial.print("Yaw = ");
+  Serial.println(yaw);
+
+  timer = millis();
+  //delay(abs((timeStep*1000) - (millis() - timer)));
+  Vector normGyro = mpu.readNormalizeGyro();
+  yaw = yaw + normGyro.ZAxis * timeStep;
+
   }
+
+  motors.setM1Speed(0);
+  motors.setM2Speed(0);
+
 }
+*/
+
+void setGyroAng(int angle) {
+  while (abs(yaw - angle) > 5) {  // Ensures the loop exits when within the threshold
+
+    if (yaw > angle) {
+      motors.setM1Speed(100);
+      motors.setM2Speed(-100);
+    } else {
+      motors.setM1Speed(-100);
+      motors.setM2Speed(100);
+    }
+
+    Serial.print("Yaw = ");
+    Serial.println(yaw);
+
+    // Time tracking for consistent updates
+    unsigned long timer = millis();
+    
+    // Read gyro data
+    Vector normGyro = mpu.readNormalizeGyro();
+    
+    // Integrate gyro data to update yaw
+    yaw += normGyro.ZAxis * timeStep;
+
+    // Ensure a consistent loop timing
+    while (millis() - timer < timeStep * 1000) {
+      // Wait until timeStep has elapsed
+    }
+  }
+
+  // Stop motors after reaching the desired angle
+  motors.setM1Speed(0);
+  motors.setM2Speed(0);
+}
+
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -560,7 +609,7 @@ void setup() {
       maxValues[i] = analogRead(pins[i]);
     }
   
-    calibrate() ;
+   //calibrate() ;
     delay(1000);
 }
 
@@ -585,4 +634,7 @@ void loop() {
       //Serial.print("\t");
     } 
     Serial.println("");
+
+    setGyroAng(180);
+    delay(100000);
 }
