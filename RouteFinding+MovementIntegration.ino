@@ -16,7 +16,7 @@ DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 MPU6050 mpu;
 
 unsigned long timer = 0;
-float timeStep = 0.01;
+float timeStep = 0.1;
 
 float yaw = 0;
 
@@ -302,7 +302,7 @@ void followLine() {
 
 void path(int yaw, int prev, int next) {
   if(next == 6 && prev == 0){
-    setGyroAng(0);
+    setGyroAng(180);
     followLine();
   }
 
@@ -503,7 +503,7 @@ void removeEdgeRedirect(int gyroAngle, int prev,int next, Graph g) {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setGyroAng(int angle) {
-  while(yaw <= (angle-10) || yaw >= (angle + 10)) {
+  while(yaw <= abs(angle-10) || yaw >= abs(angle + 10)) {
     if(yaw > angle) {
       motors.setM1Speed(100);
       motors.setM2Speed(-100);
@@ -553,7 +553,6 @@ void setup() {
 
     mpu.calibrateGyro();  // Calibrate gyroscope
     mpu.setThreshold(3); // Set threshold sensitivity
-    Serial.begin(115200); //VERY IMPORTNAT//////
   
     // Assign initial values to min and max
     for (int i = 0; i < numPins; i++) {
@@ -569,8 +568,6 @@ void setup() {
 
 
 void loop() {
-
-  
     timer = millis();
     Vector normGyro = mpu.readNormalizeGyro();
     yaw = yaw + normGyro.ZAxis * timeStep;
@@ -579,18 +576,13 @@ void loop() {
     Serial.println(yaw);
 
     // Wait for full timeStep period
-    delay((timeStep * 1000) - (millis() - timer));
+    delay(abs((timeStep*1000) - (millis() - timer)));
+    
     
     for (int i = 0; i < 5; i++) {
       analogValue[i] = analogRead(analogPin[i]);
-      Serial.print(analogValue[i]);
-      Serial.print("\t");
-      if (i == 4) {
-        Serial.println("");  // New line after all readings
-        delay(100);
-      }
-    }
-    
-    path(yaw, 0, 6);
-    
-  }
+      //Serial.print(analogValue[i]);
+      //Serial.print("\t");
+    } 
+    Serial.println("");
+}
