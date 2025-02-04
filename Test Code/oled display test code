@@ -11,35 +11,39 @@
 #define SCREEN_HEIGHT 64
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-// Sharp Distance Sensor (Analog Input on GPIO16)
+// Sharp Distance Sensor 
 #define SENSOR_PIN 16  
+#define BUZZER_PIN 17  //  for the buzzer
 
-// Threshold for obstacle detection (adjust based on actual sensor values)
-#define OBSTACLE_THRESHOLD 1500  // Change this value after checking Serial Monitor
+// Threshold for obstacle detection 
+#define OBSTACLE_THRESHOLD 1500  
 
 void setup() {
   Serial.begin(115200);
   Wire.begin(I2C_SDA, I2C_SCL);
 
-  // Initialize OLED
+  pinMode(BUZZER_PIN, OUTPUT); //  buzzer as output
+  digitalWrite(BUZZER_PIN, LOW); // buzzer is off initially
+
+  // Initialize OLED DISPLAY
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
     Serial.println(F("SSD1306 allocation failed"));
     for (;;);
   }
 
-  // Show startup message
+  // initial message
   display.clearDisplay();
   display.setTextSize(2);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(10, 20);
-  display.println("Starting...");
+  display.setCursor(1, 20);
+  display.println("Starting..");
   display.display();
-  delay(2000);
+  delay(1000);
 }
 
 void loop() {
   int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
-  Serial.print("Sensor Value: ");  
+  Serial.print("Sensor Value: "); 
   Serial.println(sensorValue);  // Print value to Serial Monitor
 
   display.clearDisplay();
@@ -47,15 +51,21 @@ void loop() {
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(10, 20);
 
-  // Adjust display based on sensor value
+  // Check if obstacle is detected
   if (sensorValue > OBSTACLE_THRESHOLD) {
-    display.println("Obstacle!");
+    display.println("Oh, no!  Obstacle!");
     Serial.println("Obstacle detected!");
-  } else {
-    display.println("Running...");
+    
+    // Activate the buzzer
+    digitalWrite(BUZZER_PIN, HIGH); 
+    delay(500); // Buzzer on for 500ms
+    digitalWrite(BUZZER_PIN, LOW);
+  } 
+  else {
+    display.println("Running..");
     Serial.println("No obstacle detected.");
   }
 
   display.display();
-  delay(1000);  // Increase delay for stable readings
+  delay(1000);  // Delay for stable readings
 }
