@@ -14,7 +14,7 @@ DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 // Variables
 int minValues[5] = {0};
 int maxValues[5] = {0};
-int threshold[5] = {0};
+int threshold[5] = {0}; // change this from zero to threshold values if no calibrate
 
 int Speed = 400; //standard speed
 int turnSpeed = 300;
@@ -65,6 +65,9 @@ void checkDistanceSensor() {
   float distanceCM = getDistanceCM(sensorValue);
   
   if (distanceCM > 0 && distanceCM <= 60) { 
+    if (distanceCM > thresholdDistance + 5) { // reset to zero
+      detectCount = 0;  // Reset count if no obstacle
+    }
     if (distanceCM <= thresholdDistance) {
       detectCount++;
       Serial.println("count++");
@@ -80,9 +83,6 @@ void checkDistanceSensor() {
       motors.setSpeeds(300, 300);
       delay(500);
       detectCount = 0;
-    }
-    if (distanceCM > thresholdDistance) {
-      detectCount = 0;  // Reset count if no obstacle
     }
   }
   else {
@@ -139,7 +139,7 @@ void pid(){
   D = error - previousError;
 
   PIDval = (Kp * P) + (Ki * I) + (Kd * D) + 20; 
-  // +60 is an offset value to bring the final PIDval to 0 when on the line
+  // +20 is an offset value to bring the final PIDval to 0 when on the line
   previousError = error;
 
   LSP = Speed - PIDval;
@@ -184,7 +184,7 @@ void setup() {
     maxValues[i] = analogRead(pins[i]);
   }
   calibrate();
-  mega();
+  //mega(); music maybe
   Serial.println("Setup complete!");
   delay(1000);
 }
