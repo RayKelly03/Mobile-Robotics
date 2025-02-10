@@ -13,13 +13,15 @@ DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 
 // Node A = Node 6, Node B = Node 7
 
-MPU6050 mpu;
 
-unsigned long timer = 0;
-float timeStep = 0.1;
+int motor1PWM = 37;
+int motor1Phase = 38;
+int motor2PWM = 39;
+int motor2Phase = 20;
+
+int threshold = 1000;
 
 int yaw = 0;
-int threshold = 1000;
 
 int Inf = INT_MAX;
 int prev = -1;
@@ -29,9 +31,6 @@ int route[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
 
-
-int minValues[5] = {0};
-int maxValues[5] = {0};
 
 int Speed = 350; //standard speed
 int turnSpeed = 262.5;
@@ -178,46 +177,37 @@ class Graph {
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-void calibrate(int yaw) {
-  unsigned long startTime = millis();  // Record the start time
-  unsigned long calibrationDuration = 5000;  // Run calibration for 3000 ms
-  while (abs(yaw) < 360) {
-    motors.setSpeeds(200, -200);  // Spin the bot continuously during calibration
-  }
 
-  while (millis() - startTime < calibrationDuration) {
-    // Update min and max sensor values
-    for (int j = 0; j < numPins; j++) {
-      int value = analogRead(pins[j]);
-      if (value < minValues[j]) {
-        minValues[j] = value;
-      }
-      if (value > maxValues[j]) {
-        maxValues[j] = value;
-      }
-    }
-  }
-  // Calculate thresholds
-  for (int i = 0; i < numPins; i++) {
-    threshold[i] = (minValues[i] + maxValues[i]) / 2;
-  }
-  // Print min, max, and threshold values for each sensor
-  Serial.println("Calibration complete!");
-  for (int i = 0; i < numPins; i++) {
-    Serial.print("Sensor ");
-    Serial.print(i);
-    Serial.print(" - Min: ");
-    Serial.print(minValues[i]);
-    Serial.print(", Max: ");
-    Serial.print(maxValues[i]);
-    Serial.print(", Threshold: ");
-    Serial.println(threshold[i]);
-  }
-  motors.setSpeeds(0, 0);  // Stop the motors after calibration
+void Forward() {
+  digitalWrite(motor1Phase, LOW); //forward
+  digitalWrite(motor2Phase, LOW); 
+  analogWrite(motor1PWM, 100); // set speed of motor
+  analogWrite(motor2PWM, 100); // set speed of motor
+  Serial.println("Forward"); // Display motor direction
 }
 
-*/
+void Backward() {
+  digitalWrite(motor1Phase, HIGH); //forward
+  digitalWrite(motor2Phase, HIGH); 
+  analogWrite(motor1PWM, 100); // set speed of motor
+  analogWrite(motor2PWM, 100); // set speed of motor
+  Serial.println("Backward"); // Display motor direction
+}
+
+void Right() {
+  digitalWrite(motor1Phase, LOW); 
+  digitalWrite(motor2Phase, HIGH);
+  analogWrite(motor1PWM, 100); // set speed of motor
+  Serial.println("Right"); // Display motor direction
+}
+
+void Left() {
+  digitalWrite(motor1Phase, HIGH);
+  digitalWrite(motor2Phase, LOW); 
+  analogWrite(motor2PWM, 100); // set speed of motor
+  Serial.println("Left"); // Display motor direction
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -265,27 +255,19 @@ void pid(){
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void followLine() {
-  while(!(analogRead(pins[0]) < 1000 && analogRead(pins[4] < 1000))){
-    
-    if (analogValue[0] < threshold && analogValue[4] > threshold) {
-      Serial.println("Left");
-      motors.setM1Speed(50);
+
+  /*
+  while(analogRead(pins[0]) > 1000 && analogRead(pins[1]) > 1000 && analogRead(pins[2]) > 1000 && analogRead(pins[3]) > 1000 && analogRead(pins[4] > 1000)){
+    if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
+      motors.setM1Speed(0);
       motors.setM2Speed(turnSpeed);
     } 
-  //Right turn
-    else if (analogValue[0] > threshold && analogValue[4] < threshold) {
-      Serial.println("Right");
+    else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
       motors.setM1Speed(turnSpeed);
-      motors.setM2Speed(50);
+      motors.setM2Speed(0);
     }
-  //NODE Code
-    else if (analogValue[0] < threshold && analogValue[4] < threshold) {
-      Serial.print("Straight");
-
-    }
-   // Regular line follow using PID or otherwise
-    else if (analogValue[2] < threshold) {
+    // Regular line follow using PID or otherwise
+    if (analogRead(pins[2]) < threshold[2]) {
       //Kp = 0.0006 * (1000 - analogRead(pins[2]));
       Kd = 0.025; 
       Ki = 0.0001;
@@ -297,13 +279,48 @@ void followLine() {
       analogValue[i] = analogRead(analogPin[i]);
       Serial.print(analogValue[i]);
       Serial.print("\t");
+      if (i == 4) {
+        Serial.println("");  // New line after all readings
+        delay(100);
+      }
     }
-    Serial.println("");
-  
   }
     motors.setM1Speed(0);
     motors.setM2Speed(0);
-}
+    */
+
+void followLine() {
+  while(true){
+      for (int i = 0; i < 5; i++) {
+        analogValue[i] = analogRead(analogPin[i]);
+      } 
+
+      if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
+      motors.setM1Speed(50);
+      motors.setM2Speed(turnSpeed);
+      } 
+
+    //Right turn
+      else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
+        motors.setM1Speed(turnSpeed);
+        motors.setM2Speed(50);
+      }
+
+      else if (analogRead(pins[2]) < threshold) {
+        //Kp = 0.0006 * (1000 - analogRead(pins[2]));
+        Kd = 0.025; 
+        Ki = 0.0001;
+        Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
+        pid(); // To be implemented
+      }
+
+      if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) {
+        return;
+      }
+    }
+  }  
+
+
 
 
 
@@ -313,23 +330,20 @@ void followLine() {
 void path(int prev, int next) {
   if(next == 6 && prev == 0){
     setGyroAng(0);
+    delay(500);
     followLine();
   }
 
   else if(next == 0 && prev == 6){
     setGyroAng(90); // positive angle for right turn, negative angle for left turn?
+    delay(500);
     followLine();
   }
 
   else if(next == 1 && prev == 6){
     setGyroAng(180);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    delay(500);
+    followLine();
   }
 
   else if(next == 6 && prev == 1){
@@ -355,14 +369,9 @@ void path(int prev, int next) {
   }
 
   else if(next == 7 && prev == 1){
-    setGyroAng(0);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(180);
+    delay(500);
+    followLine();
   }
 
   else if(next == 0 && prev == 4){
@@ -432,14 +441,9 @@ void path(int prev, int next) {
   }
 
   else if(next == 3 && prev == 7){
-    setGyroAng(180);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(90);
+    delay(500);
+    followLine();
   }
 
   else if(next == 7 && prev == 3){
@@ -531,17 +535,23 @@ void setGyroAng(int angle) {
   motors.setM2Speed(0);
 
 }
-*/
+
 
 void setGyroAng(int targetAngle) {
-  /*
-  Serial.print("targetAngle = ");
-  Serial.print(targetAngle);
-  Serial.print("    Yaw = ");
-  Serial.println(yaw);
-  delay(10000);
-  */
-  while (abs(yaw - targetAngle) > 5) {  // Ensures the loop exits when within the threshold  
+  
+    Serial.println("1");
+    if (yaw > targetAngle) {
+      Serial.println("2");
+      Left();
+      Serial.println(abs((yaw - targetAngle)/90));
+      delay(500 * abs((yaw - targetAngle)/90));
+    } else {
+      Serial.println("3");
+      Serial.println(abs((yaw - targetAngle)/90));
+      Right();
+    }
+  
+  while (analogValue[2] > 1000) {  // Ensures the loop exits when within the threshold  
     
     if (yaw > targetAngle) {
       motors.setM1Speed(100);
@@ -550,34 +560,92 @@ void setGyroAng(int targetAngle) {
       motors.setM1Speed(-100);
       motors.setM2Speed(100);
     }
-
-    Serial.print(" Yaw = ");
-    Serial.println(yaw);
-
-    timer = millis();
-    Vector normGyro = mpu.readNormalizeGyro();
-    yaw = yaw + normGyro.ZAxis * timeStep;
-    
-    Serial.print(" Yaw = ");
-    Serial.println(yaw);
-
-    delay(abs((timeStep*1000) - (millis() - timer)));
+    analogValue[2] = analogRead(pins[2]);
   }
+
+  if (yaw > targetAngle) {
+      yaw = yaw - targetAngle;
+    } else {
+      yaw = targetAngle - yaw;
+    }
 
   // Stop motors after reaching the desired angle
   motors.setM1Speed(0);
   motors.setM2Speed(0);
   Serial.print("Yaw Target Achieved");
 }
+*/
+
+void setGyroAng(int targetAngle) {
+    if (targetAngle == yaw) {
+        return;  // Exit if already at the target angle
+    }
+
+    int angleDifference = targetAngle - yaw;  
+    int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
+    int timePer90 = 1000;  // Adjust based on testing
+    int turnTime = ((abs(angleDifference) / 90.0) * timePer90) - 50; // Scaled timing
+
+    Serial.print("Turning ");
+    Serial.print(turnDirection == 1 ? "Right" : "Left");
+    Serial.print(" for ");
+    Serial.print(turnTime);
+    Serial.println(" ms");
+
+    // Start turning
+    if (turnDirection == 1) {
+        motors.setM1Speed(200);
+        motors.setM2Speed(-200);
+    } else {
+        motors.setM1Speed(-200);
+        motors.setM2Speed(200);
+    }
+
+    delay(turnTime); // Wait for calculated turn time
+
+    // Continue adjusting until a sensor detects a line
+    while (analogRead(analogPin[2]) >= 1000 && 
+           analogRead(analogPin[0]) >= 1000 && 
+           analogRead(analogPin[4]) >= 1000) {
+        // Keep turning
+        if (turnDirection == 1) {
+            motors.setM1Speed(200);
+            motors.setM2Speed(-200);
+        } else {
+            motors.setM1Speed(-200);
+            motors.setM2Speed(200);
+        }
+    }
+
+    // Stop motors once a sensor detects a line
+    motors.setM1Speed(0);
+    motors.setM2Speed(0);
+    delay(100); // Small pause
+
+    // Adjust yaw estimation (since there's no gyro, update manually)
+    yaw = targetAngle;
+
+    Serial.println("Yaw Target Achieved");
+
+    delay(500); // Small delay before following the line
+}
+
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
     Serial.begin(115200);
 
-    motors.setM1Speed(0);
-    motors.setM2Speed(0);
+    motors.setSpeeds(0, 0);
     delay(1000);
+
+    pinMode(motor1PWM,OUTPUT);
+    pinMode(motor1Phase,OUTPUT);
+    pinMode(motor2PWM,OUTPUT);
+    pinMode(motor2Phase,OUTPUT);
 
 
     Graph g; // Creates Graph
@@ -598,49 +666,22 @@ void setup() {
     for (int i = 0; i < 5; i++) {
     pinMode(analogPin[i], INPUT);  // Sensor pins setup
   }
-
-    // Initialize I2C with custom pins
-    Wire.begin(45, 48); // SDA = GPIO45, SCL = GPIO48
-
-    // Initialize MPU6050
-    while (!mpu.begin(MPU6050_SCALE_2000DPS, MPU6050_RANGE_2G)) 
-    {
-        Serial.println("Could not find a valid MPU6050 sensor, check wiring!");
-        delay(500);
-    }
-
-    mpu.calibrateGyro();  // Calibrate gyroscope
-    mpu.setThreshold(3); // Set threshold sensitivity
-  
-    // Assign initial values to min and max
-    for (int i = 0; i < numPins; i++) {
-      minValues[i] = analogRead(pins[i]);
-      maxValues[i] = analogRead(pins[i]);
-    }
-  
+    
 }
 
 
 
 
 void loop() {
-    timer = millis();
-    Vector normGyro = mpu.readNormalizeGyro();
-    yaw = yaw + normGyro.ZAxis * timeStep;
-    
-    Serial.print(" Yaw = ");
-    Serial.println(yaw);
-
-    // Wait for full timeStep period
-    delay(abs((timeStep*1000) - (millis() - timer)));
-    
-    
     for (int i = 0; i < 5; i++) {
       analogValue[i] = analogRead(analogPin[i]);
-      Serial.print(analogValue[i]);
-      Serial.print("\t");
+      //Serial.print(analogValue[i]);
+      //Serial.print("\t");
     } 
-    Serial.println("");
-
-    followLine();
+    //Serial.println("");
+    path(0, 6);
+    path(6, 1);
+    path(1, 7);
+    path(7, 2);
+    path(2, 3);
 }
