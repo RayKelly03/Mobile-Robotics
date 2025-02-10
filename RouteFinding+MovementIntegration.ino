@@ -300,10 +300,25 @@ void followLine() {
       motors.setM2Speed(turnSpeed);
       } 
 
+      else if (analogRead(pins[1]) < threshold && analogRead(pins[0]) > threshold) {
+      motors.setM1Speed(turnSpeed);
+      motors.setM2Speed(Speed);
+      } 
+
+      else if (analogRead(pins[3]) < threshold && analogRead(pins[4]) > threshold) {
+      motors.setM1Speed(Speed);
+      motors.setM2Speed(turnSpeed);
+      } 
+
     //Right turn
       else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
-        motors.setM1Speed(turnSpeed);
+        motors.setM1Speed(Speed);
         motors.setM2Speed(50);
+      }
+
+      else if (analogRead(pins[0]) > threshold && analogRead(pins[1]) > threshold && analogRead(pins[2]) > threshold && analogRead(pins[3]) > threshold && analogRead(pins[4]) > threshold) {
+        motors.setM1Speed(0);
+        motors.setM2Speed(0);
       }
 
       else if (analogRead(pins[2]) < threshold) {
@@ -315,6 +330,7 @@ void followLine() {
       }
 
       if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) {
+        delay(80);
         return;
       }
     }
@@ -347,25 +363,15 @@ void path(int prev, int next) {
   }
 
   else if(next == 6 && prev == 1){
-    setGyroAng(180);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(0);
+    delay(500);
+    followLine();
   }
 
   else if(next == 1 && prev == 7){
     setGyroAng(0);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    delay(500);
+    followLine();
   }
 
   else if(next == 7 && prev == 1){
@@ -376,107 +382,62 @@ void path(int prev, int next) {
 
   else if(next == 0 && prev == 4){
     setGyroAng(0);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    delay(500);
+    followLine();
   }
 
   else if(next == 4 && prev == 0){
     setGyroAng(180);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    delay(500);
+    followLine();
   }
 
   else if(next == 2 && prev == 6){
-    setGyroAng(-90);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(270);
+    delay(500);
+    followLine();
   }
 
   else if(next == 6 && prev == 2){
     setGyroAng(0);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    delay(500);
+    followLine();
   }
 
   else if(next == 3 && prev == 2){
-    setGyroAng(0);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(180);
+    delay(500);
+    followLine();
   }
 
   else if(next == 2 && prev == 3){
-    setGyroAng(180);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(0);
+    delay(500);
+    followLine();
   }
 
   else if(next == 3 && prev == 7){
-    setGyroAng(90);
+    setGyroAng(270);
     delay(500);
     followLine();
   }
 
   else if(next == 7 && prev == 3){
-    setGyroAng(-90);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(180);
+    delay(500);
+    followLine();
   }
 
   else if(next == 7 && prev == 4){
-    setGyroAng(90);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(180);
+    delay(500);
+    followLine();
   }
 
   else if(next == 4 && prev == 7){
-    setGyroAng(180);
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
+    setGyroAng(90);
+    delay(500);
+    followLine();
   }
 
   else if(next == 5 && prev == 7){
@@ -583,7 +544,7 @@ void setGyroAng(int targetAngle) {
 
     int angleDifference = targetAngle - yaw;  
     int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
-    int timePer90 = 1000;  // Adjust based on testing
+    int timePer90 = 300;  // Adjust based on testing
     int turnTime = ((abs(angleDifference) / 90.0) * timePer90) - 50; // Scaled timing
 
     Serial.print("Turning ");
@@ -594,26 +555,38 @@ void setGyroAng(int targetAngle) {
 
     // Start turning
     if (turnDirection == 1) {
-        motors.setM1Speed(200);
-        motors.setM2Speed(-200);
-    } else {
         motors.setM1Speed(-200);
         motors.setM2Speed(200);
+    } else {
+        motors.setM1Speed(200);
+        motors.setM2Speed(-200);
     }
 
     delay(turnTime); // Wait for calculated turn time
 
     // Continue adjusting until a sensor detects a line
     while (analogRead(analogPin[2]) >= 1000 && 
-           analogRead(analogPin[0]) >= 1000 && 
-           analogRead(analogPin[4]) >= 1000) {
+           analogRead(analogPin[1]) >= 1000 && 
+           analogRead(analogPin[3]) >= 1000
+           ) {
         // Keep turning
         if (turnDirection == 1) {
-            motors.setM1Speed(200);
-            motors.setM2Speed(-200);
-        } else {
             motors.setM1Speed(-200);
             motors.setM2Speed(200);
+        } else {
+            motors.setM1Speed(200);
+            motors.setM2Speed(-200);
+        }
+    }
+
+    while (analogRead(analogPin[2]) >= 1000 ) {
+        // Keep turning
+        if (turnDirection == 1) {
+            motors.setM1Speed(-200);
+            motors.setM2Speed(200);
+        } else {
+            motors.setM1Speed(200);
+            motors.setM2Speed(-200);
         }
     }
 
@@ -684,4 +657,5 @@ void loop() {
     path(1, 7);
     path(7, 2);
     path(2, 3);
+
 }
