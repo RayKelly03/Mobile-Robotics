@@ -1,0 +1,64 @@
+#include <Wire.h>
+
+// Sharp Distance Sensor 
+#define SENSOR_PIN 16  
+#define BUZZER_PIN 17  // Buzzer for alerts
+
+// Thresholds for obstacle detection
+#define OBSTACLE_THRESHOLD 3200  // 3500 for spare, normal is 1500 
+#define CLOSE_RANGE 3200
+#define MID_RANGE 3000
+#define FAR_RANGE 2900
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW); // Ensure the buzzer starts off
+
+  Serial.println("Parking Sensor Initialized");
+}
+
+// Function to check parking sensor and activate buzzer accordingly
+void checkParkingSensor() {
+  int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
+  Serial.print("Sensor Value: "); 
+  Serial.println(sensorValue);  // Print value to Serial Monitor
+
+  int beepDelay = 0; // Time between beeps
+
+  // Adjust beep frequency based on distance
+  if (sensorValue > OBSTACLE_THRESHOLD) {
+    Serial.println("Too Close!");
+    beepDelay = 100;  // Fastest beep (closest range)
+  } 
+  else if (sensorValue > CLOSE_RANGE) {
+    Serial.println("Very Close!");
+    beepDelay = 250;
+  }
+  else if (sensorValue > MID_RANGE) {
+    Serial.println("Close!");
+    beepDelay = 500;
+  }
+  else if (sensorValue > FAR_RANGE) {
+    Serial.println("Approaching..");
+    beepDelay = 1000; // Slowest beep (farthest range)
+  } 
+  else {
+    Serial.println("No obstacle detected.");
+    beepDelay = 0; // No beeping if no obstacle
+  }
+
+  // Buzzer logic
+  if (beepDelay > 0) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(100);
+    digitalWrite(BUZZER_PIN, LOW);
+    delay(beepDelay - 100);  // Adjust off time based on beep delay
+  } else {
+    delay(500);  // Default delay when no obstacle
+  }
+}
+
+void loop() {
+  checkParkingSensor(); // Call the function to check parking sensor
+}
