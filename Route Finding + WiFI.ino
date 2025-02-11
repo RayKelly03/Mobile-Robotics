@@ -793,7 +793,7 @@ void loop() {
     path(0, 6);
     path(6, 1);
     getRouteServer();
-    delay(10000) 
+    delay(10000);
     
 
 }
