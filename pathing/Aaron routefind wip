@@ -1,0 +1,301 @@
+#include <DRV8835MotorShield.h>
+
+#include <limits.h>
+
+// Pin definitions
+#define LED_PIN 39
+#define M1PWM 37
+#define M1Phase 38
+#define M2PWM 39  
+#define M2Phase 20
+
+// Motor driver library call
+DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
+
+//route selection
+int currentNode = 0; // Start at Node 0
+int destinationNode = 3; // Destination node
+const int NUM_NODES = 8; // Number of nodes in the track
+#define V NUM_NODES
+
+
+// Variables
+int minValues[5] = {0};
+int maxValues[5] = {0};
+int threshold[5] = {1500,1500,1500,1500,1500}; // change this from zero to threshold values if no calibrate
+
+int Speed = 400; //standard speed
+int turnSpeed = 300;
+int LSP = 0; // speed variables for setting through PID
+int RSP = 0;
+
+// Pin assignments
+int pins[] = {4, 5, 6, 7, 15}; // Define the pins to be calibrated
+int numPins = 5; // Get the number of pins
+
+
+//PID PROPERTIES
+int P = 0;
+int D = 0;
+int I = 0; 
+int previousError = 0;
+int PIDval = 0;
+int error = 0;
+float Kp = 0;
+float Ki = 0;
+float Kd= 0;
+
+//Distance sensor
+const int sensorPin = 16; // Analog pin 16 for the sensor
+
+// Threshold distance in cm to detect an obstacle
+const float thresholdDistance = 4.0; 
+
+//multiple detections to avoid false alarms
+int detectCount = 0;
+int nodeCount = 0;
+
+
+///////////////////////////////////////////// route?
+int adjacencyMatrix[NUM_NODES][NUM_NODES] = {
+  {0, 0, 0, 0, 1, 0, 1, 0}, // Node 0 is connected to Nodes 4 and 6
+  {0, 0, 0, 0, 0, 0, 1, 1}, // Node 1 is connected to Nodes 7 and 6
+  {0, 0, 0, 1, 0, 0, 1, 0}, // Node 2 is connected to Nodes 3 and 6
+  {0, 0, 1, 0, 0, 0, 0, 1}, // Node 3 is connected to Nodes 2 and 7
+  {1, 0, 0, 0, 0, 0, 0, 1},  // Node 4 is connected to Nodes 0 and 7
+  {0, 0, 0, 0, 0, 0, 0, 1}, // Node 5 is connected to Nodes 7
+  {1, 1, 1, 0, 0, 0, 0, 0}, // Node 6 is connected to Nodes 0 and 2
+  {0, 1, 0, 1, 1, 0, 0, 0}  // Node 7 is connected to Nodes 3 and 4
+};
+
+int path[V]; // Array to store the shortest path
+int dist[V]; // Array to store distances
+int parent[V]; // Array to store the path
+
+void detectNode() {
+  if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
+    Serial.print("Node detected: ");
+    Serial.println(currentNode);
+    motors.setSpeeds(0, 0); // Stop
+    delay(500);
+    decideNextMove(); // Decide the next move based on the path
+  }
+}
+
+// Dijkstra's algorithm to compute the shortest path
+void dijkstra(int graph[V][V], int src, int dist[V], int parent[V]) {
+    bool sptSet[V];
+    for (int i = 0; i < V; i++) {
+        dist[i] = INT_MAX;
+        sptSet[i] = false;
+        parent[i] = -1;
+    }
+    dist[src] = 0;
+
+    for (int count = 0; count < V - 1; count++) {
+        int u = minDistance(dist, sptSet);
+        sptSet[u] = true;
+        for (int v = 0; v < V; v++) {
+            if (!sptSet[v] && graph[u][v] && dist[u] != INT_MAX && dist[u] + graph[u][v] < dist[v]) {
+                dist[v] = dist[u] + graph[u][v];
+                parent[v] = u;
+            }
+        }
+    }
+}
+
+// Find the node with the minimum distance
+int minDistance(int dist[], bool sptSet[]) {
+    int min = INT_MAX, min_index;
+    for (int v = 0; v < V; v++) {
+        if (!sptSet[v] && dist[v] <= min) {
+            min = dist[v];
+            min_index = v;
+        }
+    }
+    return min_index;
+}
+
+
+// Decide the next move based on the computed path
+void decideNextMove() {
+  // Compute the shortest path
+  dijkstra(adjacencyMatrix, currentNode, dist, parent);
+
+  // Reconstruct the path
+  int node = destinationNode;
+  int pathIndex = 0;
+  while (node != -1) {
+    path[pathIndex++] = node;
+    node = parent[node];
+  }
+
+  // Reverse the path to get the correct order
+  for (int i = 0; i < pathIndex / 2; i++) {
+    int temp = path[i];
+    path[i] = path[pathIndex - 1 - i];
+    path[pathIndex - 1 - i] = temp;
+  }
+
+  // Move to the next node
+  int nextNode = path[1]; // Next node in the path
+  if (nextNode == currentNode + 1) {
+    // Turn right
+    motors.setM1Speed(turnSpeed);
+    motors.setM2Speed(50);
+  } else if (nextNode == currentNode - 1) {
+    // Turn left
+    motors.setM1Speed(50);
+    motors.setM2Speed(turnSpeed);
+  } else {
+    // Go straight
+    motors.setSpeeds(Speed, Speed);
+  }
+
+  currentNode = nextNode; // Update current node
+
+  Serial.print("Next node: ");
+  Serial.println(nextNode);
+  Serial.print("Path: ");
+  for (int i = 0; i < pathIndex; i++) {
+    Serial.print(path[i]);
+    Serial.print(" ");
+  }
+  Serial.println();
+}
+
+/*
+// Function to convert the sensor reading to distance in centimeters
+float getDistanceCM(int sensorValue) {
+  // Convert the analog reading to voltage ( 5V reference)
+  float voltage = sensorValue * (5.0 / 1023.0);
+
+  if (voltage > 0.42) { // Avoid division by zero or invalid values
+    return 27.86 / (voltage - 0.42); //0.42 V value is the approximate minimum voltage output
+  } else {
+    return -1; // Return -1 to indicate out-of-range or invalid reading
+  }
+}
+
+
+// Separate Function to Handle Distance Sensor Logic
+void checkDistanceSensor() {
+  int sensorValue = analogRead(sensorPin);
+  float distanceCM = getDistanceCM(sensorValue);
+  
+  if (distanceCM > 0 && distanceCM <= 60) { 
+    if (distanceCM > thresholdDistance + 5) { // reset to zero
+      detectCount = 0;  // Reset count if no obstacle
+    }
+    if (distanceCM <= thresholdDistance) {
+      detectCount++;
+      Serial.println("count++");
+    }
+    if (detectCount >= 30) {
+      Serial.println("AHHHH OBSTACLEEE");
+      motors.setSpeeds(0, 0);
+      delay(500);
+      motors.setM1Speed(turnSpeed);
+      motors.setM2Speed(-turnSpeed);
+      delay(1000); 
+      motors.setSpeeds(0, 0);
+      motors.setSpeeds(300, 300);
+      delay(500);
+      detectCount = 0;
+    }
+  }
+  else {
+    Serial.println("Out of range or invalid reading");
+  }
+}
+*/
+
+void pid(){
+  int error = (analogRead(pins[1])-analogRead(pins[3]));
+
+  P = error;
+  I = I + error;
+  D = error - previousError;
+
+  PIDval = (Kp * P) + (Ki * I) + (Kd * D) + 20; 
+  // +20 is an offset value to bring the final PIDval to 0 when on the line
+  previousError = error;
+
+  LSP = Speed - PIDval;
+  RSP = Speed + PIDval;
+
+  //set max and min speeds
+  if (LSP > Speed) {LSP = Speed;}
+  if (LSP < -0){LSP = -0;}
+  if (RSP > Speed){RSP = Speed;}
+  if (RSP < -0){RSP = -0;}
+
+  motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
+
+  // Node detection in PID function
+  if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
+      Serial.print("Node detected: ");
+      Serial.println(currentNode);
+      motors.setSpeeds(400, 400); // incase speed value is changed
+      motors.setSpeeds(0, 0); //stop
+      delay(600); //another delay just cause
+      motors.setSpeeds(300, 300);
+      decideNextMove(); // Decide the next move based on the path
+  }
+
+  // Case for a sharp left turn or right turn
+  // Left turn
+  else if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
+    motors.setM1Speed(50);
+    motors.setM2Speed(turnSpeed);
+  } 
+  //Right turn
+  else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
+    motors.setM1Speed(turnSpeed);
+    motors.setM2Speed(50);
+  }
+
+  // Debugging output
+  /*
+  Serial.print("Error: "); Serial.print(error);
+  Serial.print(", P: "); Serial.print(P);
+  Serial.print(", Kp: "); Serial.print(Kp);
+  Serial.print(", D: "); Serial.print(D);
+  Serial.print(", Kd: "); Serial.print(Kd);
+  Serial.print(", I: "); Serial.print(I);
+  Serial.print(", LSP: "); Serial.print(LSP);
+  Serial.print(", RSP: "); Serial.println(RSP);
+  Serial.print(", PIDval: "); Serial.println(PIDval);
+  */
+}
+
+void setup() {
+  Serial.println("Starting setup..."); // ADD THIS LINE
+  pinMode(LED_PIN, OUTPUT);
+  Serial.begin(115200); //VERY IMPORTNAT//////
+  
+
+  Serial.println("Setup complete!");
+  delay(1000);
+}
+
+void loop() {
+
+  // Regular line follow using PID or otherwise
+  if (analogRead(pins[2]) < threshold[2]) {
+    //Kp = 0.0006 * (1000 - analogRead(pins[2]));
+    Kd = 0.025; 
+    Ki = 0.0001;
+    Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
+    pid(); // To be implemented
+  }
+  //checkDistanceSensor();
+}
+
+/*
+void loop() {
+  detectNode(); // Detect nodes and make decisions
+  pid(); // Continue line-following using PID
+  checkDistanceSensor(); // Check for obstacles
+}
+*/
