@@ -36,7 +36,7 @@ int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
 
 
-int Speed = 350; //standard speed
+int Speed = 330; //standard speed
 int turnSpeed = 262.5;
 int LSP = 0; // speed variables for setting through PID
 int RSP = 0;
@@ -374,25 +374,28 @@ void pid(){
   }
     motors.setM1Speed(0);
     motors.setM2Speed(0);
-    */
+    
 
 void followLine() {
   while(true){
       for (int i = 0; i < 5; i++) {
         analogValue[i] = analogRead(analogPin[i]);
+        Serial.print(analogValue[i]);
+        Serial.print("\t");
       } 
+      Serial.println("");
 
       if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
       motors.setM1Speed(50);
       motors.setM2Speed(turnSpeed);
       } 
 
-      else if (analogRead(pins[1]) < threshold && analogRead(pins[0]) > threshold) {
+      else if (analogRead(pins[1]) < threshold && analogRead(pins[0]) > threshold && analogRead(pins[2]) > threshold) {
       motors.setM1Speed(turnSpeed);
       motors.setM2Speed(Speed);
       } 
 
-      else if (analogRead(pins[3]) < threshold && analogRead(pins[4]) > threshold) {
+      else if (analogRead(pins[3]) < threshold && analogRead(pins[4]) > threshold && analogRead(pins[2]) > threshold) {
       motors.setM1Speed(Speed);
       motors.setM2Speed(turnSpeed);
       } 
@@ -416,12 +419,52 @@ void followLine() {
         pid(); // To be implemented
       }
 
-      if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) {
-        delay(80);
+      if ((analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold) || (analogRead(pins[1]) < threshold && analogRead(pins[4]) < threshold ) || (analogRead(pins[0]) < threshold && analogRead(pins[3]) < threshold) || (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) ) {
+        delay(200);
+        motors.setM1Speed(0);
+        motors.setM2Speed(0);
         return;
       }
     }
   }  
+  */
+
+  void followLine() {
+
+    while(true) {
+      if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
+      motors.setM1Speed(50);
+      motors.setM2Speed(turnSpeed);
+    } 
+    //Right turn
+    else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
+      motors.setM1Speed(turnSpeed);
+      motors.setM2Speed(50);
+    }
+    //NODE Code
+    else if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) {
+      Serial.print("Node ");
+      delay(325);
+      motors.setSpeeds(0, 0); //stop
+      break;
+    }
+    // Regular line follow using PID or otherwise
+    else if (analogRead(pins[2]) < threshold) {
+      //Kp = 0.0006 * (1000 - analogRead(pins[2]));
+      Kd = 0.025; 
+      Ki = 0.0001;
+      Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
+      pid(); // To be implemented
+    }
+
+    for (int i = 0; i < 5; i++) {
+        analogValue[i] = analogRead(analogPin[i]);
+        Serial.print(analogValue[i]);
+        Serial.print("\t");
+      } 
+      Serial.println("");
+  }
+  }
 
 
 
@@ -746,7 +789,11 @@ void loop() {
       //Serial.print("\t");
     } 
     //Serial.println("");
+
     path(0, 6);
     path(6, 1);
-    getRouteServer();   
-  }
+    getRouteServer();
+    delay(10000) 
+    
+
+}
