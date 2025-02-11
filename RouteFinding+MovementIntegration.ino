@@ -11,6 +11,8 @@
 // Motor driver library call
 DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 
+
+
 // Node A = Node 6, Node B = Node 7
 
 
@@ -58,21 +60,26 @@ float Kd= 0;
 class Graph {
   private: 
     int adjMatrix[8][8]; // Initialises adjacency matrix
+    int dir[8][8];
+    int finalDir[8][8];
   public:
     Graph() {
       
         for (int i = 0; i < 8; ++i) {
             for (int j = 0; j < 8; ++j) {
                 adjMatrix[i][j] = 0;
+                dir[i][j] = 0;
+                finalDir[i][i] = 0;
             }
         }
     }
 
     // Adds weighted edge to graph for connections between nodes
-    void addEdge (unsigned int v, unsigned int w, int weight) {
+    void addEdge (unsigned int v, unsigned int w, int weight, int initialDir, int finalDire) {
       if (v < 8 && w < 8) { // Ensures node exists
-        adjMatrix[v][w] = weight;
-        adjMatrix[w][v] = weight; // Sets both locations for a route in the adjacency matrix to the distance between nodes 
+        adjMatrix[w][v] = weight;
+        dir[w][v] = initialDir;
+        finalDir[w][v] = finalDire;
       }
       else {
             Serial.println("Error: Vertex out of bounds"); // If node doesn't exist
@@ -99,6 +106,14 @@ class Graph {
             }
             Serial.println();
         }
+    }
+
+    int returnInitialDir (int prev, int next) {
+      return dir[prev][next];
+    }
+
+    int returnFinalDir (int prev, int next) {
+      return finalDir[prev][next];
     }
 
     // Finds closest unvisited node to the graph
@@ -178,35 +193,7 @@ class Graph {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Forward() {
-  digitalWrite(motor1Phase, LOW); //forward
-  digitalWrite(motor2Phase, LOW); 
-  analogWrite(motor1PWM, 100); // set speed of motor
-  analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Forward"); // Display motor direction
-}
-
-void Backward() {
-  digitalWrite(motor1Phase, HIGH); //forward
-  digitalWrite(motor2Phase, HIGH); 
-  analogWrite(motor1PWM, 100); // set speed of motor
-  analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Backward"); // Display motor direction
-}
-
-void Right() {
-  digitalWrite(motor1Phase, LOW); 
-  digitalWrite(motor2Phase, HIGH);
-  analogWrite(motor1PWM, 100); // set speed of motor
-  Serial.println("Right"); // Display motor direction
-}
-
-void Left() {
-  digitalWrite(motor1Phase, HIGH);
-  digitalWrite(motor2Phase, LOW); 
-  analogWrite(motor2PWM, 100); // set speed of motor
-  Serial.println("Left"); // Display motor direction
-}
+Graph g; // Creates Graph
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -239,108 +226,12 @@ void pid(){
   }
   motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
 
-  // Debugging output
-  /*
-  Serial.print("Error: "); Serial.print(error);
-  Serial.print(", P: "); Serial.print(P);
-  Serial.print(", Kp: "); Serial.print(Kp);
-  Serial.print(", D: "); Serial.print(D);
-  Serial.print(", Kd: "); Serial.print(Kd);
-  Serial.print(", I: "); Serial.print(I);
-  Serial.print(", LSP: "); Serial.print(LSP);
-  Serial.print(", RSP: "); Serial.println(RSP);
-  Serial.print(", PIDval: "); Serial.println(PIDval);
-  */
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-  /*
-  while(analogRead(pins[0]) > 1000 && analogRead(pins[1]) > 1000 && analogRead(pins[2]) > 1000 && analogRead(pins[3]) > 1000 && analogRead(pins[4] > 1000)){
-    if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) > threshold[4]) {
-      motors.setM1Speed(0);
-      motors.setM2Speed(turnSpeed);
-    } 
-    else if (analogRead(pins[0]) > threshold[0] && analogRead(pins[4]) < threshold[4]) {
-      motors.setM1Speed(turnSpeed);
-      motors.setM2Speed(0);
-    }
-    // Regular line follow using PID or otherwise
-    if (analogRead(pins[2]) < threshold[2]) {
-      //Kp = 0.0006 * (1000 - analogRead(pins[2]));
-      Kd = 0.025; 
-      Ki = 0.0001;
-      Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
-      pid(); // To be implemented
-    }
-
-    for (int i = 0; i < 5; i++) {
-      analogValue[i] = analogRead(analogPin[i]);
-      Serial.print(analogValue[i]);
-      Serial.print("\t");
-      if (i == 4) {
-        Serial.println("");  // New line after all readings
-        delay(100);
-      }
-    }
-  }
-    motors.setM1Speed(0);
-    motors.setM2Speed(0);
-    
-
-void followLine() {
-  while(true){
-      for (int i = 0; i < 5; i++) {
-        analogValue[i] = analogRead(analogPin[i]);
-        Serial.print(analogValue[i]);
-        Serial.print("\t");
-      } 
-      Serial.println("");
-
-      if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
-      motors.setM1Speed(50);
-      motors.setM2Speed(turnSpeed);
-      } 
-
-      else if (analogRead(pins[1]) < threshold && analogRead(pins[0]) > threshold && analogRead(pins[2]) > threshold) {
-      motors.setM1Speed(turnSpeed);
-      motors.setM2Speed(Speed);
-      } 
-
-      else if (analogRead(pins[3]) < threshold && analogRead(pins[4]) > threshold && analogRead(pins[2]) > threshold) {
-      motors.setM1Speed(Speed);
-      motors.setM2Speed(turnSpeed);
-      } 
-
-    //Right turn
-      else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
-        motors.setM1Speed(Speed);
-        motors.setM2Speed(50);
-      }
-
-      else if (analogRead(pins[0]) > threshold && analogRead(pins[1]) > threshold && analogRead(pins[2]) > threshold && analogRead(pins[3]) > threshold && analogRead(pins[4]) > threshold) {
-        motors.setM1Speed(0);
-        motors.setM2Speed(0);
-      }
-
-      else if (analogRead(pins[2]) < threshold) {
-        //Kp = 0.0006 * (1000 - analogRead(pins[2]));
-        Kd = 0.025; 
-        Ki = 0.0001;
-        Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
-        pid(); // To be implemented
-      }
-
-      if ((analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold) || (analogRead(pins[1]) < threshold && analogRead(pins[4]) < threshold ) || (analogRead(pins[0]) < threshold && analogRead(pins[3]) < threshold) || (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) ) {
-        delay(200);
-        motors.setM1Speed(0);
-        motors.setM2Speed(0);
-        return;
-      }
-    }
-  }  
-  */
 
   void followLine() {
 
@@ -357,12 +248,12 @@ void followLine() {
     //NODE Code
     else if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) {
       Serial.print("Node ");
-      delay(325);
+      delay(300);
       motors.setSpeeds(0, 0); //stop
       break;
     }
     // Regular line follow using PID or otherwise
-    else if (analogRead(pins[2]) < threshold) {
+    else if (analogRead(pins[2]) < threshold || analogRead(pins[1]) < threshold || analogRead(pins[3]) < threshold ) {
       //Kp = 0.0006 * (1000 - analogRead(pins[2]));
       Kd = 0.025; 
       Ki = 0.0001;
@@ -372,240 +263,74 @@ void followLine() {
 
     for (int i = 0; i < 5; i++) {
         analogValue[i] = analogRead(analogPin[i]);
-        Serial.print(analogValue[i]);
-        Serial.print("\t");
+        //Serial.print(analogValue[i]);
+        //Serial.print("\t");
       } 
-      Serial.println("");
+      //Serial.println("");
   }
   }
-
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void path(int prev, int next) {
-  if(next == 6 && prev == 0){
-    setGyroAng(0);
-    delay(500);
-    followLine();
-  }
+void setGyroAng(int targetAngle, int prev, int next) {
 
-  else if(next == 0 && prev == 6){
-    setGyroAng(90); // positive angle for right turn, negative angle for left turn?
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 1 && prev == 6){
-    setGyroAng(180);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 6 && prev == 1){
-    setGyroAng(0);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 1 && prev == 7){
-    setGyroAng(0);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 7 && prev == 1){
-    setGyroAng(180);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 0 && prev == 4){
-    setGyroAng(0);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 4 && prev == 0){
-    setGyroAng(180);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 2 && prev == 6){
-    setGyroAng(270);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 6 && prev == 2){
-    setGyroAng(0);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 3 && prev == 2){
-    setGyroAng(180);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 2 && prev == 3){
-    setGyroAng(0);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 3 && prev == 7){
-    setGyroAng(270);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 7 && prev == 3){
-    setGyroAng(180);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 7 && prev == 4){
-    setGyroAng(180);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 4 && prev == 7){
-    setGyroAng(90);
-    delay(500);
-    followLine();
-  }
-
-  else if(next == 5 && prev == 7){
-    setGyroAng(180);
-    
-    // Insert Parking Code Here
-    while (analogValue[0] > 300 && analogValue[1] > 300 && analogValue[2] > 300 && analogValue[3] > 300 && analogValue[4] > 300) {
-      followLine();
-  
-      //if (frontSensor > 300) {
-        //removeEdgeRedirect();
-      //}
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-void removeEdgeRedirect(int gyroAngle, int prev,int next, Graph g) {
-  setGyroAngle(gyroAngle + 180);
-  while(analogValue[0], analogValue[1], analogValue[2], analogValue[3], analogValue[4] > 300) {
-    followLine();
-  }
-  g.removeEdge(prev, next);
-  g.dijkstra(prev);
-  //path(prev, next);
-  
-}
-*/
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-/*
-void setGyroAng(int angle) {
-  while(abs(yaw) <= abs(angle-5) || abs(yaw) >= abs(angle + 5)) {
-    if(yaw > angle) {
-      motors.setM1Speed(100);
-      motors.setM2Speed(-100);
-  }
-    else if(yaw < angle) {
-      motors.setM1Speed(-100);
-      motors.setM2Speed(100);
-    }
-  Serial.print("Yaw = ");
-  Serial.println(yaw);
-
-  timer = millis();
-  //delay(abs((timeStep*1000) - (millis() - timer)));
-  Vector normGyro = mpu.readNormalizeGyro();
-  yaw = yaw + normGyro.ZAxis * timeStep;
-
-  }
-
-  motors.setM1Speed(0);
-  motors.setM2Speed(0);
-
-}
-
-
-void setGyroAng(int targetAngle) {
-  
-    Serial.println("1");
-    if (yaw > targetAngle) {
-      Serial.println("2");
-      Left();
-      Serial.println(abs((yaw - targetAngle)/90));
-      delay(500 * abs((yaw - targetAngle)/90));
-    } else {
-      Serial.println("3");
-      Serial.println(abs((yaw - targetAngle)/90));
-      Right();
-    }
-  
-  while (analogValue[2] > 1000) {  // Ensures the loop exits when within the threshold  
-    
-    if (yaw > targetAngle) {
-      motors.setM1Speed(100);
-      motors.setM2Speed(-100);
-    } else {
-      motors.setM1Speed(-100);
-      motors.setM2Speed(100);
-    }
-    analogValue[2] = analogRead(pins[2]);
-  }
-
-  if (yaw > targetAngle) {
-      yaw = yaw - targetAngle;
-    } else {
-      yaw = targetAngle - yaw;
-    }
-
-  // Stop motors after reaching the desired angle
-  motors.setM1Speed(0);
-  motors.setM2Speed(0);
-  Serial.print("Yaw Target Achieved");
-}
-*/
-
-void setGyroAng(int targetAngle) {
     if (targetAngle == yaw) {
         return;  // Exit if already at the target angle
     }
 
+
     int angleDifference = targetAngle - yaw;  
-    int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
-    int timePer90 = 300;  // Adjust based on testing
-    int turnTime = ((abs(angleDifference) / 90.0) * timePer90) - 50; // Scaled timing
 
-    Serial.print("Turning ");
-    Serial.print(turnDirection == 1 ? "Right" : "Left");
-    Serial.print(" for ");
-    Serial.print(turnTime);
-    Serial.println(" ms");
-
-    // Start turning
-    if (turnDirection == 1) {
-        motors.setM1Speed(-200);
-        motors.setM2Speed(200);
-    } else {
-        motors.setM1Speed(200);
-        motors.setM2Speed(-200);
+    if (angleDifference > 180) {
+        angleDifference -= 360;
+    } 
+    else if (angleDifference < -180) {
+        angleDifference += 360;
     }
 
-    delay(turnTime); // Wait for calculated turn time
+
+    int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
+    int nodeCount = 0;
+    int nodes = abs(angleDifference/90) - 1;
+
+
+    if (turnDirection == 1) {
+          motors.setM1Speed(200);
+          motors.setM2Speed(-200);
+          delay(400);
+      } 
+      else {
+          motors.setM1Speed(-200);
+          motors.setM2Speed(200);
+          delay(400);
+      }
+
+      Serial.print("Node Count before while loop = ");
+      Serial.println(nodeCount);
+      Serial.print("Nodes= ");
+      Serial.println(nodes);
+      
+    // Start turning
+    while(nodeCount < nodes) {
+      if (turnDirection == 1) {
+          motors.setM1Speed(200);
+          motors.setM2Speed(-200);
+      } 
+      else {
+          motors.setM1Speed(-200);
+          motors.setM2Speed(200);
+      }
+
+      if(analogRead(analogPin[2]) < 1000) {
+        delay(400);
+        nodeCount++;
+      }
+    }
+
+
+     // Wait for calculated turn time
 
     // Continue adjusting until a sensor detects a line
     while (analogRead(analogPin[2]) >= 1000 && 
@@ -622,6 +347,7 @@ void setGyroAng(int targetAngle) {
         }
     }
 
+
     while (analogRead(analogPin[2]) >= 1000 ) {
         // Keep turning
         if (turnDirection == 1) {
@@ -633,13 +359,16 @@ void setGyroAng(int targetAngle) {
         }
     }
 
+    //yaw = (targetAngle + 360) % 360;
+
     // Stop motors once a sensor detects a line
     motors.setM1Speed(0);
     motors.setM2Speed(0);
     delay(100); // Small pause
 
     // Adjust yaw estimation (since there's no gyro, update manually)
-    yaw = targetAngle;
+    yaw = g.returnFinalDir(next, prev);
+    
 
     Serial.println("Yaw Target Achieved");
 
@@ -647,7 +376,14 @@ void setGyroAng(int targetAngle) {
 }
 
 
-
+void path(int prev, int next) {
+    int angle = g.returnInitialDir(next, prev);
+    Serial.print("Initial Angle = ");
+    Serial.println(angle);
+    setGyroAng(angle, prev, next);
+    delay(500);
+    followLine();
+  }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -664,16 +400,25 @@ void setup() {
     pinMode(motor2Phase,OUTPUT);
 
 
-    Graph g; // Creates Graph
-    g.addEdge(0, 6, 78);
-    g.addEdge(0, 4, 80);
-    g.addEdge(1, 6, 60);
-    g.addEdge(1, 7, 23);
-    g.addEdge(2, 6, 78);
-    g.addEdge(2, 3, 80);
-    g.addEdge(3, 7, 150);
-    g.addEdge(4, 7, 150);
-    g.addEdge(7, 5, 1);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
+    
+    g.addEdge(0, 6, 78, 0, 270);
+    g.addEdge(6, 0, 78, 90, 180);
+    g.addEdge(0, 4, 80, 180, 180);
+    g.addEdge(4, 0, 80, 0, 0);
+    g.addEdge(1, 6, 60, 0, 0);
+    g.addEdge(6, 1, 60, 180, 180);
+    g.addEdge(1, 7, 23, 180, 180);
+    g.addEdge(7, 1, 23, 0, 0);
+    g.addEdge(2, 6, 78, 0, 90);
+    g.addEdge(6, 2, 78, 270, 180);
+    g.addEdge(2, 3, 80, 180, 180);
+    g.addEdge(3, 2, 80, 0, 0);
+    g.addEdge(3, 7, 150, 180, 90);
+    g.addEdge(7, 3, 150, 270, 0);
+    g.addEdge(4, 7, 150, 180, 270);
+    g.addEdge(7, 4, 150, 90, 0);
+    g.addEdge(7, 5, 1, 180, 180);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
+     
 
     Serial.print("Adjacency Matrix:");
     g.displayMatrix();
@@ -685,20 +430,16 @@ void setup() {
     
 }
 
-
-
-
 void loop() {
-    for (int i = 0; i < 5; i++) {
-      analogValue[i] = analogRead(analogPin[i]);
-      Serial.print(analogValue[i]);
-      Serial.print("\t");
-    } 
-    Serial.println("");
 
-    path(0,6);
-    path(6,1);
-    path(1, 6);
-    path(6, 0);
+    path(0, 6);
+    path(6, 2);
+    path(2, 3);
+    path(3, 2);
+    path(2, 6);
+    path(6, 1);
+    path(6, 1);
+
+
 
 }
