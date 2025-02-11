@@ -248,7 +248,7 @@ void pid(){
     //NODE Code
     else if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold) {
       Serial.print("Node ");
-      //delay(300);
+      delay(300);
       motors.setSpeeds(0, 0); //stop
       break;
     }
@@ -273,7 +273,7 @@ void pid(){
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+/*
 void setGyroAng(int targetAngle, int prev, int next) {
 
     motors.setSpeeds(0, 0);
@@ -296,42 +296,134 @@ void setGyroAng(int targetAngle, int prev, int next) {
     int nodeCount = 0;
     int nodes = abs(angleDifference/90) - 1;
 
+    Serial.print("Yaw = ");
+    Serial.println(yaw);
+    Serial.print("Nodes = ");
+    Serial.println(nodes);
+    Serial.print("Node Count = ");
+    Serial.println(nodeCount);
+
+
+
     if (nodes != nodeCount) {
       while (analogRead(analogPin[2]) >= 1000) {
         if (turnDirection == 1) {
-              motors.setM1Speed(200);
-              motors.setM2Speed(-200);
+          motors.setSpeeds(200, -200);
           } 
         else {
-              motors.setM1Speed(-200);
-              motors.setM2Speed(200);
+          motors.setSpeeds(-200, 200);
           }
       }
         
       // Start turning
       while(nodeCount < nodes) {
         if (turnDirection == 1) {
-            motors.setM1Speed(200);
-            motors.setM2Speed(-200);
+          motors.setSpeeds(200, -200);
         } 
         else {
-            motors.setM1Speed(-200);
-            motors.setM2Speed(200);
+          motors.setSpeeds(-200, 200);
         }
 
         if(analogRead(analogPin[2]) < 1000) {
           while (analogRead(analogPin[2]) < 1000){
             if (turnDirection == 1) {
-              motors.setM1Speed(200);
-              motors.setM2Speed(-200);
+              motors.setSpeeds(200, -200);
             } 
             else {
-              motors.setM1Speed(-200);
-              motors.setM2Speed(200);
+              motors.setSpeeds(-200, 200);
             }
           }
           nodeCount++;
         }
+      }
+
+        while (analogRead(analogPin[2]) < 1000 ) {
+        // Keep turning
+          if (turnDirection == 1) {
+            motors.setSpeeds(200, -200);
+          } else {
+            motors.setSpeeds(-200, 200);
+          }
+        }
+
+    }
+
+
+     // Wait for calculated turn time
+
+    // Continue adjusting until a sensor detects a line
+
+
+    
+
+    //yaw = (targetAngle + 360) % 360;
+
+    // Stop motors once a sensor detects a line
+    motors.setM1Speed(0);
+    motors.setM2Speed(0);
+    delay(100); // Small pause
+
+    // Adjust yaw estimation (since there's no gyro, update manually)
+    yaw = g.returnFinalDir(next, prev);
+    
+
+    Serial.println("Yaw Target Achieved");
+    Serial.print("Finished Node Count = ");
+    Serial.println(nodeCount);
+
+
+    delay(500); // Small delay before following the line
+}
+*/
+
+void setGyroAng(int targetAngle, int prev, int next) {
+
+    if (targetAngle == yaw) {
+        return;  // Exit if already at the target angle
+    }
+
+
+    int angleDifference = targetAngle - yaw;  
+
+    if (angleDifference > 180) {
+        angleDifference -= 360;
+    } 
+    else if (angleDifference < -180) {
+        angleDifference += 360;
+    }
+
+
+    int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
+    int nodeCount = 0;
+    int nodes = abs(angleDifference/90) - 1;
+
+
+    if (turnDirection == 1) {
+          motors.setSpeeds(-200, 200);
+          delay(400);
+      } 
+      else {
+        motors.setSpeeds(200, -200);    
+          delay(400);
+      }
+
+      Serial.print("Node Count before while loop = ");
+      Serial.println(nodeCount);
+      Serial.print("Nodes= ");
+      Serial.println(nodes);
+      
+    // Start turning
+    while(nodeCount < nodes) {
+      if (turnDirection == 1) {
+        motors.setSpeeds(-200, 200);
+      } 
+      else {
+        motors.setSpeeds(200, -200);
+      }
+
+      if(analogRead(analogPin[2]) < 1000) {
+        delay(400);
+        nodeCount++;
       }
     }
 
@@ -345,11 +437,10 @@ void setGyroAng(int targetAngle, int prev, int next) {
            ) {
         // Keep turning
         if (turnDirection == 1) {
-            motors.setM1Speed(-200);
-            motors.setM2Speed(200);
+          motors.setSpeeds(200, -200);
+
         } else {
-            motors.setM1Speed(200);
-            motors.setM2Speed(-200);
+          motors.setSpeeds(-200, 200);
         }
     }
 
@@ -357,11 +448,10 @@ void setGyroAng(int targetAngle, int prev, int next) {
     while (analogRead(analogPin[2]) >= 1000 ) {
         // Keep turning
         if (turnDirection == 1) {
-            motors.setM1Speed(-200);
-            motors.setM2Speed(200);
+          motors.setSpeeds(200, -200);
+        
         } else {
-            motors.setM1Speed(200);
-            motors.setM2Speed(-200);
+          motors.setSpeeds(-200, 200);
         }
     }
 
@@ -381,6 +471,83 @@ void setGyroAng(int targetAngle, int prev, int next) {
     delay(500); // Small delay before following the line
 }
 
+
+/*
+void setGyroAng(int targetAngle, int prev, int next) {
+    motors.setSpeeds(0, 0); // Stop motors before turning
+
+    // Exit if already at the target angle
+    if (targetAngle == yaw) {
+        return;
+    }
+
+    // Calculate shortest angle difference
+    int angleDifference = targetAngle - yaw;
+    if (angleDifference > 180) {
+        angleDifference -= 360;
+    } else if (angleDifference < -180) {
+        angleDifference += 360;
+    }
+
+    // Determine turn direction: 1 = Right, -1 = Left
+    int turnDirection = (angleDifference > 0) ? 1 : -1;
+
+    // Calculate number of nodes to cross
+    int nodes = abs(angleDifference / 90) - 1;
+    int nodeCount = 0;
+
+    // **Phase 1: Turn until sensor 2 is OFF the line**
+    while (analogRead(analogPin[2]) < 1000) {
+        if (turnDirection == 1) {
+            motors.setM1Speed(-200);
+            motors.setM2Speed(200);
+        } else {
+            motors.setM1Speed(200);
+            motors.setM2Speed(-200);
+        }
+    }
+
+    // **Phase 2: Continue turning and count nodes**
+    while (nodeCount < nodes) {
+        if (turnDirection == 1) {
+            motors.setM1Speed(-200);
+            motors.setM2Speed(200);
+        } else {
+            motors.setM1Speed(200);
+            motors.setM2Speed(-200);
+        }
+
+        // Detect a node (when sensor 2 crosses a line)
+        if (analogRead(analogPin[2]) < 1000) {
+            delay(50); // Debounce to avoid false detection
+            nodeCount++;
+            
+            // Wait for sensor 2 to be fully off the line before counting again
+            while (analogRead(analogPin[2]) < 1000) {
+                // Keep turning until it's off
+                if (turnDirection == 1) {
+                    motors.setM1Speed(-200);
+                    motors.setM2Speed(200);
+                } else {
+                    motors.setM1Speed(200);
+                    motors.setM2Speed(-200);
+                }
+            }
+        }
+    }
+
+    // Stop motors once target nodes have been crossed
+    motors.setSpeeds(0, 0);
+    delay(100); // Small pause
+
+    // Update yaw estimation
+    yaw = g.returnFinalDir(next, prev);
+
+    Serial.println("Yaw Target Achieved");
+    delay(500); // Small delay before continuing
+}
+
+*/
 
 void path(int prev, int next) {
     int angle = g.returnInitialDir(next, prev);
@@ -434,11 +601,10 @@ void setup() {
 }
 
 void loop() {
+    
 
     path(0, 6);
     path(6, 1);
     path(1, 7);
-    
-    
 
 }
