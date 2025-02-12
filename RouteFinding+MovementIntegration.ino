@@ -3,6 +3,9 @@
 #include <limits.h>
 #include <DRV8835MotorShield.h>
 
+#define SENSOR_PIN 16  
+#define BUZZER_PIN 17  // Buzzer for alerts
+
 #define M1PWM 37
 #define M1Phase 38
 #define M2PWM 39  
@@ -25,10 +28,13 @@ int threshold = 1000;
 
 int yaw = 0;
 
+int i = 0;
+int j = 1;
+
 int Inf = INT_MAX;
 int prev = -1;
 int next = -1;
-int route[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+int serverRoute[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
 
 int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
@@ -131,7 +137,7 @@ class Graph {
     }
 
 
-    void dijkstra(int src, int dest) {
+    void dijkstra(int src, int dest, int route[]) {
         int dist[8];      // Shortest total distance from src to other nodes
         bool sptSet[8];   // Array of processed nodes
         int parent[8];    // Array of parent of each node (acts as a lookup table)
@@ -160,11 +166,12 @@ class Graph {
             }
         }
 
-        // Print the results
-        printSolution(dist, parent, src, dest);
+        int index = 0;
+        printPath(parent, dest, route, index);
     }
 
     // Print the distance and paths
+    /*
     void printSolution(int dist[], int parent[], int src, int dest) {
         Serial.println("Vertex\tDistance\tPath");
         Serial.print(dest);
@@ -175,6 +182,7 @@ class Graph {
         printPath(parent, dest, route, index);
         Serial.println();
     }
+    */
 
 
     // Prints the shortest path - uses parent array
@@ -194,6 +202,38 @@ class Graph {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Graph g; // Creates Graph
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void getRoute() {
+  connect(); 
+  client.println("GET /api/getRoute/lkim7619 HTTP/1.1");
+  client.println("Host: 3.250.38.184");
+  client.println("Connection: close");
+  client.println();
+  r = readResponse();
+  s = getResponseBody(r);
+  Serial.print("Full Route:");
+  Serial.println(s);
+  
+}
+
+void convertArray(String data) {
+  routeSize = 0;  
+  int startIndex = 0, endIndex;
+
+  while ((endIndex = data.indexOf(',', startIndex)) != -1 && routeSize < 10) {
+    route[routeSize++] = data.substring(startIndex, endIndex).toInt();
+    startIndex = endIndex + 1;
+  }
+
+  if (startIndex < data.length() && routeSize < 10) {
+    route[routeSize++] = data.substring(startIndex).toInt();
+  }
+
+  for (int i = routeSize; i < 10; i++) {
+    route[i] = -1;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -275,98 +315,7 @@ void pid(){
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/*
-void setGyroAng(int targetAngle, int prev, int next) {
 
-    motors.setSpeeds(0, 0);
-    delay(200);
-    if (targetAngle == yaw) {
-      return;  // Exit if already at the target angle
-    }
-
-    int angleDifference = targetAngle - yaw;  
-
-    if (angleDifference > 180) {
-        angleDifference -= 360;
-    } 
-    else if (angleDifference < -180) {
-        angleDifference += 360;
-    }
-
-    int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
-    int nodeCount = 0;
-    int nodes = abs(angleDifference/90) - 1;
-
-    Serial.print("Node Count before while loop = ");
-    Serial.println(nodeCount);
-    Serial.print("Nodes= ");      
-    Serial.println(nodes);
-
-
-  while (analogRead(analogPin[2]) < threshold) {
-    if (turnDirection == 1) {
-          motors.setSpeeds(-200, 200);
-    }
-    else {
-        motors.setSpeeds(200, -200);         
-    }
-  }
-
-    // Start turning
-    while(nodeCount <= nodes) {
-      if (turnDirection == 1) {
-        motors.setSpeeds(-200, 200);
-      } 
-      else {
-        motors.setSpeeds(200, -200);
-      }
-
-      if(analogRead(analogPin[2]) < 1000) {
-        delay(50);
-        Serial.println("Line Detected");
-        while (analogRead(analogPin[2]) < 1000) {
-                // Keep turning until the sensor is off the line
-                if (turnDirection == 1) {
-                    motors.setSpeeds(-200, 200);
-                } else {
-                    motors.setSpeeds(200, -200);
-                }
-            }
-        nodeCount++;
-      }
-    }
-
-    Serial.print("Node Count before while loop = ");
-    Serial.println(nodeCount);
-    Serial.print("Nodes= ");      
-    Serial.println(nodes);
-
-
-     // Wait for calculated turn time
-
-    // Continue adjusting until a sensor detects a lin
-
-
-    while (analogRead(analogPin[2]) >= 1000 ) {
-        // Keep turning
-        if (turnDirection == 1) {
-          motors.setSpeeds(200, -200);
-        
-        } else {
-          motors.setSpeeds(-200, 200);
-        }
-    }
-
-    //yaw = (targetAngle + 360) % 360;
-
-    // Stop motors once a sensor detects a line
-    motors.setSpeeds(0, 0);
-    delay(100); // Small pause
-
-    // Adjust yaw estimation (since there's no gyro, update manually)
-    yaw = g.returnFinalDir(next, prev);
-}
-*/
 
 void setGyroAng(int targetAngle, int prev, int next) {
 
@@ -387,7 +336,14 @@ void setGyroAng(int targetAngle, int prev, int next) {
 
     int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
     int nodeCount = 0;
-    int nodes = abs(angleDifference/90) - 1;
+    int nodes = 0;
+    
+    if (abs(angleDifference) == 180) {
+      nodes = 2;
+    }
+    else {
+      nodes = abs(angleDifference/90) - 1;
+    }
 
 
     while (analogRead(analogPin[2]) < threshold) {
@@ -405,24 +361,24 @@ void setGyroAng(int targetAngle, int prev, int next) {
       Serial.println(nodes);
       
     // Start turning
-    while(nodeCount < nodes) {
-      if (turnDirection == 1) {
-        motors.setSpeeds(-200, 200);
-      } 
-      else {
-        motors.setSpeeds(200, -200);
-      }
+    while(nodeCount <= nodes) {
+        if (turnDirection == 1) {
+          motors.setSpeeds(-200, 200);
+        } 
+        else {
+          motors.setSpeeds(200, -200);
+        }
+      
 
       while (analogRead(analogPin[2]) <= 1000) {
         if (turnDirection == 1) {
           motors.setSpeeds(-200, 200);
-        
-        } else {
+        } 
+        else {
           motors.setSpeeds(200, -200);
         }
-    
-      delay(300);  // Small delay to avoid false detections
-      nodeCount++;
+        delay(300);  // Small delay to avoid false detections
+        nodeCount++;
       }
     }
 
@@ -461,14 +417,94 @@ void setGyroAng(int targetAngle, int prev, int next) {
 void path(int prev, int next) {
     int angle = g.returnInitialDir(next, prev);
     setGyroAng(angle, prev, next);
-    followLine();
-  }
+    if (next == 7) {
+      checkParkingSensor();
+    }
+    else {
+      followLine();
+    }
+}
 
+void serverPath(int prev, int next) {
+  int route[10];
+  int a = 0;
+  int b = 1;
+  for(int k = 0; k < 10; k++) {
+    route[k] = -1;
+  }
+  g.dijkstra(prev, next, route);
+  while(route[b] != -1) {
+    path(route[a], route[b]);
+    a++;
+    b++;
+  }
+  //serverAtNextNode();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+// Function to check parking sensor and activate buzzer accordingly
+void checkParkingSensor() {
+
+  int OBSTACLE_THRESHOLD = 3200;  // 3500 for spare, normal is 1500 
+  int CLOSE_RANGE = 3200;
+  int MID_RANGE = 3000;
+  int FAR_RANGE = 2900;
+
+  int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
+  int beepDelay = 0; // Time between beeps
+
+  motors.setSpeeds(300, 300);
+
+  // Adjust beep frequency based on distance
+  while(true) {
+    if (sensorValue > OBSTACLE_THRESHOLD) {
+      Serial.println("Too Close!");
+      beepDelay = 100;  // Fastest beep (closest range)
+    } 
+    else if (sensorValue > CLOSE_RANGE) {
+      Serial.println("Very Close!");
+      beepDelay = 250;
+      motors.setSpeeds(0, 0);
+      break;
+    }
+    else if (sensorValue > MID_RANGE) {
+      Serial.println("Close!");
+      beepDelay = 500;
+    }
+    else if (sensorValue > FAR_RANGE) {
+      Serial.println("Approaching..");
+      beepDelay = 1000; // Slowest beep (farthest range)
+    } 
+    else {
+      Serial.println("No obstacle detected.");
+      beepDelay = 0; // No beeping if no obstacle
+    }
+
+    if (beepDelay > 0) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(100);
+    digitalWrite(BUZZER_PIN, LOW);
+    delay(beepDelay - 100);  // Adjust off time based on beep delay
+    } 
+    
+    else {
+    delay(500);  // Default delay when no obstacle
+    }
+  }
+}
+  
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
     Serial.begin(115200);
+
+    pinMode(BUZZER_PIN, OUTPUT);
+    digitalWrite(BUZZER_PIN, LOW);
 
     motors.setSpeeds(0, 0);
     delay(1000);
@@ -478,7 +514,8 @@ void setup() {
     pinMode(motor2PWM,OUTPUT);
     pinMode(motor2Phase,OUTPUT);
 
-
+    
+    //getRoute();
     
     g.addEdge(0, 6, 78, 0, 270);
     g.addEdge(6, 0, 78, 90, 180);
@@ -501,7 +538,7 @@ void setup() {
 
     Serial.print("Adjacency Matrix:");
     g.displayMatrix();
-    g.dijkstra(0, 1);
+  
 
     for (int i = 0; i < 5; i++) {
     pinMode(analogPin[i], INPUT);  // Sensor pins setup
@@ -510,11 +547,10 @@ void setup() {
 }
 
 void loop() {
-
-    path(0, 6);
-    path(6, 1);
-    path(1, 7);
-    path(7, 1);
-    
+  while (serverRoute[j] != -1) {
+    serverPath(serverRoute[i], serverRoute[j]);
+    i++;
+    j++;
+  }
 
 }
