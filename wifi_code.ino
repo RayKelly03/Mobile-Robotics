@@ -4,8 +4,8 @@
 //#include <WiFiClient.h>
 #include <WiFiServer.h>
 // wifi details
-char ssid[] = "Tp Link";
-char password[] = "Knockmore123";
+char ssid[] = "iot";
+char password[] = "snappe78certify";
 String postBody;
 String position;
 String r;
@@ -15,6 +15,9 @@ int cp; //current position
 char server[] = "3.250.38.184";
 int port = 8000;
 WiFiClient client;
+
+int route[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1}; // Initialize with -1
+int routeSize = 0;  // Number of valid stops
 
 void connectToWiFi() {
   Serial.print("Connecting to network: ");
@@ -60,24 +63,49 @@ String readResponse() {
   char buffer[BUFSIZE];
   memset(buffer, 0, BUFSIZE);
   client.readBytes(buffer, BUFSIZE);
-  String response(buffer);
-  return response;
+  return String(buffer);
 }
-  
-int getStatusCode(String& response) {
-  String code = response.substring(9, 12);
-  return code.toInt();
-}
+
     
 String getResponseBody(String& response) {
   int split = response.indexOf("\r\n\r\n");
-  String body = response.substring(split+4, response.length());
+  String body = response.substring(split+4);
   body.trim();
   return body;
 }
 
-// the loop routine runs over and over again continuously:
+
+void getRoute() {
+  connect(); 
+  client.println("GET /api/getRoute/lkim7619 HTTP/1.1");
+  client.println("Host: 3.250.38.184");
+  client.println("Connection: close");
+  client.println();
+  r = readResponse();
+  s = getResponseBody(r);
+  Serial.print("Full Route:");
+  Serial.println(s);
+  
+}
+
+void convertArray(String data) {
+  routeSize = 0;  
+  int startIndex = 0, endIndex;
+
+  while ((endIndex = data.indexOf(',', startIndex)) != -1 && routeSize < 10) {
+    route[routeSize++] = data.substring(startIndex, endIndex).toInt();
+    startIndex = endIndex + 1;
+  }
+
+  if (startIndex < data.length() && routeSize < 10) {
+    route[routeSize++] = data.substring(startIndex).toInt();
+  }
+
+  for (int i = routeSize; i < 10; i++) {
+    route[i] = -1;
+  }
 void loop() {
+  /*
   //my code
   connect();
   client.println("POST /api/arrived/lkim7619 HTTP/1.1");
@@ -92,19 +120,23 @@ void loop() {
   r = readResponse();
   //getStatusCode(r);
   s = getResponseBody(r);
-  Serial.println(s);
+  Serial.println(r);
   client.stop();
   position = s;
   postBody = "position=";
   postBody += position;
   Serial.println(postBody);
   cp=position.toInt();
-  
-  if(position!="undefined"){
-    // normal function
+  */
+  getRoute();
+  delay(2000);
+  convertArray(s);  // Convert to integer array
+
+  Serial.print("Route as Array: ");
+  for (int i = 0; i < 10; i++) {
+    Serial.print(route[i]);
+    if (i < 10 - 1) Serial.print(", ");
   }
-  else{
-    // stop code
-    while (1) {}
-  }
+  Serial.println();
+  delay(15000);
 }
