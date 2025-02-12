@@ -1,64 +1,95 @@
 #include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+
+// I2C OLED Pins (ESP32-S3)
+#define I2C_SDA 13
+#define I2C_SCL 14
+
+// OLED Display Config
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Sharp Distance Sensor 
 #define SENSOR_PIN 16  
-#define BUZZER_PIN 17  // Buzzer for alerts
 
-// Thresholds for obstacle detection
-#define OBSTACLE_THRESHOLD 3200  // 3500 for spare, normal is 1500 
-#define CLOSE_RANGE 3200
-#define MID_RANGE 3000
-#define FAR_RANGE 2900
+// Threshold values for obstacle detection
+#define OBSTACLE_THRESHOLD 2800  
+#define CLOSE_RANGE 2400
+#define MID_RANGE 2000
+#define FAR_RANGE 1500
 
 void setup() {
   Serial.begin(115200);
-  pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(BUZZER_PIN, LOW); // Ensure the buzzer starts off
+  Wire.begin(I2C_SDA, I2C_SCL);
 
-  Serial.println("Parking Sensor Initialized");
+  pinMode(SENSOR_PIN, INPUT);
+
+  // Initialize OLED display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;);
+  }
+
+  // Initial message
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(1, 20);
+  display.println("Starting..");
+  display.display();
+  delay(1000);
 }
 
-// Function to check parking sensor and activate buzzer accordingly
-void checkParkingSensor() {
-  int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
+// ** Function to get distance sensor value and display it on OLED **
+int getDistanceSensorValue() {
+  int sensorValue = analogRead(SENSOR_PIN);  
   Serial.print("Sensor Value: "); 
-  Serial.println(sensorValue);  // Print value to Serial Monitor
+  Serial.println(sensorValue);
 
-  int beepDelay = 0; // Time between beeps
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
 
-  // Adjust beep frequency based on distance
   if (sensorValue > OBSTACLE_THRESHOLD) {
+    display.println("Too Close!");
     Serial.println("Too Close!");
-    beepDelay = 100;  // Fastest beep (closest range)
   } 
   else if (sensorValue > CLOSE_RANGE) {
+    display.println("Very Close!");
     Serial.println("Very Close!");
-    beepDelay = 250;
   }
   else if (sensorValue > MID_RANGE) {
+    display.println("Close!");
     Serial.println("Close!");
-    beepDelay = 500;
   }
   else if (sensorValue > FAR_RANGE) {
+    display.println("Approaching..");
     Serial.println("Approaching..");
-    beepDelay = 1000; // Slowest beep (farthest range)
   } 
   else {
+    display.println("Clear!");
     Serial.println("No obstacle detected.");
-    beepDelay = 0; // No beeping if no obstacle
   }
 
-  // Buzzer logic
-  if (beepDelay > 0) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(100);
-    digitalWrite(BUZZER_PIN, LOW);
-    delay(beepDelay - 100);  // Adjust off time based on beep delay
-  } else {
-    delay(500);  // Default delay when no obstacle
-  }
+  display.display();
+  return sensorValue;  // Return sensor value for decision-making in the main code
 }
 
 void loop() {
-  checkParkingSensor(); // Call the function to check parking sensor
+  int distance = getDistanceSensorValue();
+
+  //  If the distance sensor detects 2800, stop for parking **
+  if (distance >= CLOSE_RANGE) {
+    Serial.println("Parking Triggered!");
+    // Call a parking function
+    while (true) {  // Stop the robot
+      Serial.println("Robot Stopped for Parking.");
+      delay(1000);
+    }
+  }
+
+  delay(500);  // Refresh every 500ms
 }
