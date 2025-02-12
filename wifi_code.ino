@@ -10,6 +10,8 @@ String postBody;
 String position;
 String r;
 String s;
+String r1;
+String s1;
 int bk=0;
 int cp; //current position
 char server[] = "3.250.38.184";
@@ -51,6 +53,15 @@ void setup() {
   Serial.begin(9600);
   delay(1000);
   connectToWiFi();
+  getRoute();
+  delay(2000);
+  convertArray(s1);
+  Serial.print("Full Route: ");
+  for (int i = 0; i < 10; i++) {
+    Serial.print(route[i]);
+    if (i < 10 - 1) Serial.print(", ");
+  }
+  Serial.println();
   postBody="position=";
   position="0";
   Serial.println(position);
@@ -81,11 +92,8 @@ void getRoute() {
   client.println("Host: 3.250.38.184");
   client.println("Connection: close");
   client.println();
-  r = readResponse();
-  s = getResponseBody(r);
-  Serial.print("Full Route:");
-  Serial.println(s);
-  
+  r1 = readResponse();
+  s1 = getResponseBody(r1);
 }
 
 void convertArray(String data) {
@@ -104,8 +112,9 @@ void convertArray(String data) {
   for (int i = routeSize; i < 10; i++) {
     route[i] = -1;
   }
+}
 void loop() {
-  /*
+  
   //my code
   connect();
   client.println("POST /api/arrived/lkim7619 HTTP/1.1");
@@ -120,23 +129,14 @@ void loop() {
   r = readResponse();
   //getStatusCode(r);
   s = getResponseBody(r);
-  Serial.println(r);
+  Serial.println(s);
   client.stop();
   position = s;
   postBody = "position=";
   postBody += position;
   Serial.println(postBody);
   cp=position.toInt();
-  */
-  getRoute();
-  delay(2000);
-  convertArray(s);  // Convert to integer array
-
-  Serial.print("Route as Array: ");
-  for (int i = 0; i < 10; i++) {
-    Serial.print(route[i]);
-    if (i < 10 - 1) Serial.print(", ");
+  if (s == "Finished") {
+    delay(15000);
   }
-  Serial.println();
-  delay(15000);
 }
