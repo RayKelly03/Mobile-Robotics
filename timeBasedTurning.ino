@@ -442,28 +442,24 @@ void setTimeAng(int targetAngle, int prev, int next) {
     Serial.println(next);
     Serial.print("Nodes = ");
     Serial.println(nodes);
-    int turnTime = nodes * 400;
+    int turnTime = nodes * 800;
     Serial.print("turnTime = ");
     Serial.println(turnTime);
 
     // Start turning
     if (nodes != 0) { // double check calculation
-        if (turnDirection == -1) {
-          motors.setSpeeds(-200, 200);
+        if (turnDirection == 1) {
+          motors.setSpeeds(200, -200);
           delay(turnTime);
         } 
         else  {
-          motors.setSpeeds(200, -200);
+          motors.setSpeeds(-200, 200);
           delay(turnTime);
         }
     }
 
     motors.setSpeeds(0, 0);
     delay(100); // Small pause
-
-    
-    Serial.print("Final yaw = ");
-    Serial.println(yaw);
 
 
     delay(500); // Small delay before following the line
@@ -482,6 +478,8 @@ void path(int prev, int next) {
       followLine();
     }
     yaw = g.returnFinalDir(prev, next);
+    Serial.print("Final yaw = ");
+    Serial.println(yaw);
 }
 
 void serverPath(int prev, int next) {
@@ -619,10 +617,11 @@ void loop() {
   path(0, 6);
   path(6, 1);
   path(1, 7);
-  path(7, 1);
+  path(7, 3);
+  path(3, 2);
+  path(2, 1);
   path(1, 6);
   path(6, 0);
-
   delay(100000);
 
 
