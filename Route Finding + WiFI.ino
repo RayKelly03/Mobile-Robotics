@@ -67,7 +67,7 @@ float Kd= 0;
 
 //WIFI Details
 char ssid[] = "iot";
-char password[] = "pashalik20pedipulation";
+char password[] = "weirdish88prozymite";
 String postBody;
 String position;
 String r;
@@ -132,9 +132,11 @@ void updateServer() {
   client.println(postBody);
   r = readResponse();
   s = getResponseBody(r);
+  client.stop();
   position = s;
   Serial.print("Next Node: ") ;
   Serial.println(position);
+  c
 }
 void getRoute() {
   connect(); 
@@ -144,6 +146,7 @@ void getRoute() {
   client.println();
   r1 = readResponse();
   s1 = getResponseBody(r1);
+  client.stop();
   convertArray(s1) ;
 
 }
