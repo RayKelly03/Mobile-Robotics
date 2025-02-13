@@ -67,7 +67,7 @@ float Kd= 0;
 
 //WIFI Details
 char ssid[] = "iot";
-char password[] = "pashalik20pedipulation";
+char password[] = "weirdish88prozymite";
 String postBody;
 String position;
 String r;
