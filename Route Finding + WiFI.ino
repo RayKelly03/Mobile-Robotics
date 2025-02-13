@@ -147,8 +147,6 @@ void getRoute() {
   convertArray(s1) ;
 
 }
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class Graph {
@@ -339,6 +337,8 @@ void pid(){
     RSP = -0;
   }
   motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
+
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -586,7 +586,8 @@ void setup() {
     pinMode(motor2PWM,OUTPUT);
     pinMode(motor2Phase,OUTPUT);
 
-    getRoute(); 
+    
+    getRoute();
     
     g.addEdge(0, 6, 78, 0, 270);
     g.addEdge(6, 0, 78, 90, 180);
@@ -614,12 +615,6 @@ void setup() {
     for (int i = 0; i < 5; i++) {
     pinMode(analogPin[i], INPUT);  // Sensor pins setup
   }
-
-    Serial.print("First Node: ") ;
-    Serial.println(position);
-
-    followLine(); //Gets the node to 0 
-    updateServer();
     
 }
 
@@ -629,5 +624,5 @@ void loop() {
     i++;
     j++;
   }
-  delay(20000);
+
 }
