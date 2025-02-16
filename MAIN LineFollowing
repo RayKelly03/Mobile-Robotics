@@ -1,5 +1,7 @@
+#include <Wire.h>
 #include <DRV8835MotorShield.h>
-#include <mega.h>
+#include <pitches.h>
+
 
 // Pin definitions
 #define LED_PIN 39
@@ -7,6 +9,10 @@
 #define M1Phase 38
 #define M2PWM 39  
 #define M2Phase 20
+#define speakerPin 17
+#define ledPin 12  
+
+
 
 // Motor driver library call
 DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
@@ -46,6 +52,61 @@ const float thresholdDistance = 4.0;
 //multiple detections to avoid false alarms
 int detectCount = 0;
 int nodeCount = 0;
+
+void phrase1() {
+    int k = random(1000, 2000);
+    digitalWrite(ledPin, HIGH);
+    for (int i = 0; i <= random(100, 2000); i++) {
+        tone(speakerPin, k + (-i * 2));          
+        delay(random(1, 2));             
+    } 
+    digitalWrite(ledPin, LOW);   
+    for (int i = 0; i <= random(100, 1000); i++) {
+        tone(speakerPin, k + (i * 10));          
+        delay(random(1, 2));             
+    } 
+}
+
+void phrase2() {
+    int k = random(1000, 2000);
+    digitalWrite(ledPin, HIGH);  
+    for (int i = 0; i <= random(100, 2000); i++) {
+        tone(speakerPin, k + (i * 2));          
+        delay(random(1, 2));             
+    } 
+    digitalWrite(ledPin, LOW);   
+    for (int i = 0; i <= random(100, 1000); i++) {
+        tone(speakerPin, k + (-i * 10));          
+        delay(random(1, 2));             
+    } 
+}
+
+// Function to generate R2D2-like random beeps and chirps
+void playR2D2Sounds() {
+    Serial.println("Playing R2D2 Sounds...");
+    
+    int K = 2000;
+    switch (random(1, 7)) {
+        case 1: phrase1(); break;
+        case 2: phrase2(); break;
+        case 3: phrase1(); phrase2(); break;
+        case 4: phrase1(); phrase2(); phrase1(); break;
+        case 5: phrase1(); phrase2(); phrase1(); phrase2(); phrase1(); break;
+        case 6: phrase2(); phrase1(); phrase2(); break;
+    }
+
+    for (int i = 0; i <= random(3, 9); i++) {
+        digitalWrite(ledPin, HIGH);  
+        tone(speakerPin, K + random(-1700, 2000));          
+        delay(random(70, 170));  
+        digitalWrite(ledPin, LOW);           
+        noTone(speakerPin);         
+        delay(random(0, 30));             
+    } 
+
+    noTone(speakerPin);         
+    delay(random(2000, 4000));  
+}
 
 // Function to convert the sensor reading to distance in centimeters
 float getDistanceCM(int sensorValue) {
@@ -177,6 +238,9 @@ void setup() {
   Serial.println("Starting setup..."); // ADD THIS LINE
   pinMode(LED_PIN, OUTPUT);
   Serial.begin(115200); //VERY IMPORTNAT//////
+  pinMode(speakerPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  randomSeed(analogRead(0));
 
   // Assign initial values to min and max
   for (int i = 0; i < numPins; i++) {
@@ -205,12 +269,17 @@ void loop() {
   //NODE Code
   else if (analogRead(pins[0]) < threshold[0] && analogRead(pins[4]) < threshold[4]) {
     Serial.print("Node ");
+    
     motors.setSpeeds(400, 400); // incase speed value is changed
     motors.setSpeeds(0, 0); //stop
+    
+    playR2D2Sounds();
+
     delay(600); //another delay just cause
     motors.setSpeeds(300, 300);
     delay(400);
     nodeCount++;
+
   }
    // Regular line follow using PID or otherwise
   else if (analogRead(pins[2]) < threshold[2]) {
@@ -220,5 +289,5 @@ void loop() {
     Kp = 0.05; // Speed variable / (Max sensor Reading / 2)
     pid(); // To be implemented
   }
-  checkDistanceSensor();
+  //checkDistanceSensor();
 }
