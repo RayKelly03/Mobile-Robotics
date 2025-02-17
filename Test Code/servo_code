@@ -2,7 +2,7 @@
 
 Servo HeadServo;
 
-// servo control pin (using pin 9 
+// servo control pin (using pin 99 //CHECK IF IT IS USED 
 const int servoPin = 9;
 
 void setup() {
