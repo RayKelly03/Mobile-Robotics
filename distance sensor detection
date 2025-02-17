@@ -1,10 +1,13 @@
 #include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
 #include <MPU6050.h>
 #include <limits.h>
 #include <DRV8835MotorShield.h>
 
 #define SENSOR_PIN 16  
 #define BUZZER_PIN 17  // Buzzer for alerts
+//#define LED_PIN 21  // LED pin 
 
 #define M1PWM 37
 #define M1Phase 38
@@ -18,10 +21,21 @@
 // Motor driver library call
 DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 
-
-
 // Node A = Node 6, Node B = Node 7
 
+#define I2C_SDA 13//OLED Pins 
+#define I2C_SCL 14
+
+// OLED Display Configuration
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+int obstacleThreshold = 2500;
+int CLOSE_RANGE = 1700;
+int MID_RANGE = 1500;
+int FAR_RANGE = 1400;
+bool obstacleFlag = false;
 
 int motor1PWM = 37;
 int motor1Phase = 38;
@@ -65,7 +79,9 @@ float Kp = 0;
 float Ki = 0;
 float Kd= 0;
 
-/*WIFI Details
+//UNCOMMENT TO WORK 
+/*
+//WIFI Details
 char ssid[] = "iot";
 char password[] = "pashalik20pedipulation";
 String postBody;
@@ -174,7 +190,7 @@ class Graph {
     // Adds weighted edge to graph for connections between nodes
     void addEdge (unsigned int v, unsigned int w, int weight, int initialDir, int finalDire) {
       if (v < 8 && w < 8) { // Ensures node exists
-        adjMatrix[w][v] = weight;
+        adjMatrix[v][w] = weight;
         dir[v][w] = initialDir;
         finalDir[v][w] = finalDire;
       }
@@ -364,10 +380,6 @@ void pid(){
     //NODE Code
     else if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold && analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold && analogRead(pins[2]) < threshold)  {
       Serial.print("Node detected");
-      //while(analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold && analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold){
-
-      //}
-
       motors.setSpeeds(0, 0); //stop
       delay(100);
       motors.setSpeeds(300, 300);
@@ -376,6 +388,7 @@ void pid(){
       delay(200);
       break;
     }
+
     // Regular line follow using PID or otherwise
     else if (analogRead(pins[2]) < threshold || analogRead(pins[1]) < threshold || analogRead(pins[3]) < threshold) {
       //Kp = 0.0006 * (1000 - analogRead(pins[2]));
@@ -408,10 +421,7 @@ void pid(){
       motors.setSpeeds(turnSpeed, 50);
     }
     //NODE Code
-    else if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold && analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold && analogRead(pins[2]) < threshold)  {
-      checkParkingSensor();
-      return;
-    }
+    
     // Regular line follow using PID or otherwise
     else if (analogRead(pins[2]) < threshold || analogRead(pins[1]) < threshold || analogRead(pins[3]) < threshold) {
       //Kp = 0.0006 * (1000 - analogRead(pins[2]));
@@ -420,6 +430,9 @@ void pid(){
       Kp = 0.1; // Speed variable / (Max sensor Reading / 2)
       pid(); // To be implemented
     }
+    else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) > threshold && analogRead(pins[1]) > threshold && analogRead(pins[3]) > threshold && analogRead(pins[2]) > threshold)  {
+      break;
+    }
 
     for (int i = 0; i < 5; i++) {
         analogValue[i] = analogRead(analogPin[i]);
@@ -427,79 +440,19 @@ void pid(){
         //Serial.print("\t");
       } 
       //Serial.println("");
-  }
+    }
   }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int readSensor(int pin, int samples = 3) {
-  long total = 0;
-  for (int i = 0; i < samples; i++) {
-    total += analogRead(pin);
-    delay(2);  // Small delay between samples
-  }
-  return total / samples;
+void driveStraight() {
+  // Drive straight for a fixed time (e.g., 3 seconds) toward the wall.
+  motors.setSpeeds(Speed, Speed);
+  delay(3000);  // Adjust this duration as needed
+  motors.setSpeeds(0, 0);  // Stop after driving straight
 }
 
-/*
-void setGyroAng(int targetAngle, int prev, int next) {
-
-
-    if (targetAngle == yaw) {
-        return;  // Exit if already at the target angle
-    }
-
-
-    int angleDifference = targetAngle - yaw;  
-    int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
-
-    if (angleDifference > 180) {
-        angleDifference -= 360;
-    } 
-    else if (angleDifference < -180) {
-        angleDifference += 360;
-    }
-
-
-    
-    int nodeCount = 0;
-    int nodes = (abs(angleDifference)/90) - 1;
-    int sensor = analogRead(analogPin[2]);
-    int middle = analogRead(analogPin[2]);
-
-     
-    // Start turning
-    while(nodeCount <= nodes) { // double check calculation
-        middle = readSensor(analogPin[2]);
-        if (turnDirection == 1) {
-          motors.setSpeeds(-100, 100);
-        } 
-        else  {
-          motors.setSpeeds(100, -100);
-        }
-
-        if (((middle - sensor) < -450) && (middle < 1000)) {
-          nodeCount++;
-          Serial.print("Difference = ");
-          //Serial.println(analogRead(analogPin[2]) - sensor);
-          delay(100);
-        }
-        
-        sensor = middle;
-       
-    }
-
-    motors.setM1Speed(0);
-    motors.setM2Speed(0);
-    delay(100); // Small pause
-
-    yaw = g.returnFinalDir(next, prev);
-
-    delay(500); // Small delay before following the line
-}
-
-*/
 
 void setTimeAng(int targetAngle, int prev, int next) {
     Serial.print("Initial yaw = ");
@@ -549,15 +502,13 @@ void path(int prev, int next) {
 
     if (next == 5) {
       followSensorLine();
-
+      checkParkingSensor();
     }
 
     else {
       followLine();
     }
     yaw = g.returnFinalDir(prev, next);
-    Serial.print("Final yaw = ");
-    Serial.println(yaw);
 }
 
 void serverPath(int prev, int next) {
@@ -568,365 +519,195 @@ void serverPath(int prev, int next) {
     route[k] = -1;
   }
   g.dijkstra(prev, next, route);
+  Serial.print(prev);
+  Serial.print("->");
+  Serial.println(next);
+  for (int i = 0; i < 10; i++) {
+    Serial.print((route[i]));
+    Serial.print(" " );
+  }
+  Serial.println();
   while(route[b] != -1) {
     path(route[a], route[b]);
+    if (obstacleFlag == true) {
+      g.removeEdge(prev, next);
+      motors.setSpeeds(200, -200);
+      delay(1600);
+      followLine();
+      yaw = g.returnFinalDir(route[a], route[b]);
+
+      int redirectRoute[10];
+      int c = 0;
+      int d = 1;
+      g.dijkstra(route[a], serverRoute[j], redirectRoute);
+      
+      while (redirectRoute[d] != -1) {
+        path(redirectRoute[c], redirectRoute[d]);
+        c++;
+        d++;
+      }
+      obstacleFlag = false;
+      break;
+    }
     a++;
     b++;
   }
-//  updateServer();
+  motors.setSpeeds(0, 0); //stop
+  delay(200);
+  //updateServer();
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-// Function to check parking sensor and activate buzzer accordingly
-
-// Function to control buzzer beeping based on distance
-/*
 void beepBuzzer(int sensorValue) {
-  int beepDelay = 0;  // Time between beeps
-  int beepDuration = 50;  // Default beep duration
-
-  // Adjust beep frequency and insistence based on distance
-  if (sensorValue > 1550) {  // **Too Close!**
-    beepDelay = 50;   // Almost continuous beep
-    beepDuration = 200;  // Long beep
+  static unsigned long lastToggleTime = 0;
+  static bool buzzerOn = false;
+  unsigned long currentTime = millis();
+  
+  // Define on/off durations based on sensor reading 
+  unsigned long onDuration = 0;
+  unsigned long offDuration = 0;
+  
+  if (sensorValue > 1700) {       // Too close: almost continuous beep
+    onDuration = 200;             // Buzzer on for 200ms
+    offDuration = 50;             // Off for 50ms
   } 
-  else if (sensorValue > 1500) {  // **Very Close!**
-    beepDelay = 100;  
-    beepDuration = 150;  
+  else if (sensorValue > 1500) {  // Very close: rapid beeping
+    onDuration = 100;             // On for 100ms
+    offDuration = 100;            // Off for 100ms
   }
-  else if (sensorValue > 1200) {  // **Close**
-    beepDelay = 250;  
-    beepDuration = 100;  
+  else if (sensorValue > 1400) {  // Close: moderate beeping
+    onDuration = 70;              // On for 70ms
+    offDuration = 180;            // Off for 180ms
   }
-  else if (sensorValue > 1000) {  // **Approaching**
-    beepDelay = 500;  
-    beepDuration = 80;  
+  else if (sensorValue > 1000) {  // Approaching: slower beeps
+    onDuration = 50;              // On for 50ms
+    offDuration = 350;            // Off for 350ms
   } 
   else {
-    beepDelay = 0;  // No obstacle detected → No beeping
-  }
-
-  // **Non-blocking beep logic using millis()**
-  static unsigned long lastBeepTime = 0;  // Stores last beep timestamp
-  if (beepDelay > 0 && millis() - lastBeepTime >= beepDelay) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(beepDuration);  // Beep duration changes based on urgency
+    // No obstacle
     digitalWrite(BUZZER_PIN, LOW);
-    lastBeepTime = millis();  // Reset timer
+  //  digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+    return;
+  }
+  
+  // Toggle buzzer state based on elapsed time 
+  if (buzzerOn && (currentTime - lastToggleTime >= onDuration)) {
+    digitalWrite(BUZZER_PIN, LOW);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+  }
+  else if (!buzzerOn && (currentTime - lastToggleTime >= offDuration)) {
+    digitalWrite(BUZZER_PIN, HIGH);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = true;
+    lastToggleTime = currentTime;
   }
 }
 
-void checkParkingSensor() {
-  int OBSTACLE_THRESHOLD = 1550;  
-  int CLOSE_RANGE = 1500;
-  int MID_RANGE = 1200;
-  int FAR_RANGE = 1000;
-  bool obstacleDetected = false;  // Flag to track stopping
 
-  motors.setSpeeds(300, 300);  // Start moving
+void checkParkingSensor() {  
+  Serial.println("Entering wall detection mode...");
+  
+  motors.setSpeeds(300, 300);  // Drive straight
 
   while (true) {
-    int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
-
+    int sensorValue = analogRead(SENSOR_PIN);  // update sensor
     Serial.print("Sensor Value: ");
     Serial.println(sensorValue);
 
-    // Call buzzer function (increases urgency as object gets closer)
-    beepBuzzer(sensorValue);
+    // Update OLED display
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(10, 20);
 
-    // **STOP MOTORS IMMEDIATELY IF OBSTACLE IS TOO CLOSE**
-    if (sensorValue > OBSTACLE_THRESHOLD) {
-      Serial.println("Too Close! Stopping motors...");
-      motors.setSpeeds(0, 0);  // Stop motors immediately
-      obstacleDetected = true;
+    // Call the buzzer function
+    beepBuzzer(sensorValue);    
+
+    if (sensorValue > obstacleThreshold) {
+      display.println("OH! STOP!");
+      Serial.println("Wall detected! Stopping");
+      motors.setSpeeds(0, 0);  // Stop the robot
+      obstacleFlag = true;
     } 
     else if (sensorValue > CLOSE_RANGE) {
+      display.println("CLOSEE!");
       Serial.println("Very Close!");
       motors.setSpeeds(0, 0);
-      obstacleDetected = true;
+      obstacleFlag = true;
     }
     else if (sensorValue > MID_RANGE) {
+      display.println("close..!");
       Serial.println("Close!");
       motors.setSpeeds(0, 0);
-      obstacleDetected = true;
+      obstacleFlag = true;
     }
     else if (sensorValue > FAR_RANGE) {
+      display.println("OPS");
       Serial.println("Approaching...");
+
     } 
     else {
+      display.println("HI, ME R2DCU");
       Serial.println("No obstacle detected.");
     }
+    display.display();
+    
+    // If an obstacle is detected, the robot will stop.
+    if (obstacleFlag) {
 
-    // **Wait Until the Obstacle is Cleared Before Moving Again**
-    if (obstacleDetected) {
       while (analogRead(SENSOR_PIN) > CLOSE_RANGE) {
         Serial.println("Waiting for obstacle to clear...");
-        motors.setSpeeds(0, 0);  // Keep motors stopped
-        delay(100);  // Prevent excessive readings
+        motors.setSpeeds(0, 0);
+        delay(10);  // Short delay to yield time 
       }
       Serial.println("Obstacle cleared! Resuming movement...");
-      obstacleDetected = false;
-      motors.setSpeeds(300, 300);  // Resume movement
+      obstacleFlag = false;
+      motors.setSpeeds(300, 300);
     }
+
+    // Short loop delay to avoid overloading the processor
+    delay(10);
   }
 }
-*/ 
 
 /*
-// Function to control buzzer beeping based on distance
-void beepBuzzer(int sensorValue) {
-  int beepDelay = 0; // Time between beeps
-
-  // Adjust beep frequency based on distance
-  if (sensorValue > 1550) {  // Too close
-    beepDelay = 5;  // Very fast beeps (urgent warning)
-  } 
-  else if (sensorValue > 1500) {  // Very close
-    beepDelay = 10;  
-  }
-  else if (sensorValue > 1200) {  // Close
-    beepDelay = 20;  
-  }
-  else if (sensorValue > 1000) {  // Approaching
-    beepDelay = 30;  
-  } 
-  else {
-    beepDelay = 0;  // No obstacle detected (no beeping)
-  }
-
-  // Non-blocking beep logic using millis()
-  static unsigned long lastBeepTime = 0;  // Stores the last beep time
-  if (beepDelay > 0 && millis() - lastBeepTime >= beepDelay) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(50);  // Short beep duration
-    digitalWrite(BUZZER_PIN, LOW);
-    lastBeepTime = millis();  // Reset timer
-  }
-}
-
-// Function to check parking sensor and activate buzzer
-void checkParkingSensor() {
-  int OBSTACLE_THRESHOLD = 1800;  
-  int CLOSE_RANGE = 1500;
-  int MID_RANGE = 1200;
-  int FAR_RANGE = 1000;
-  bool obstacleDetected = false;  // Flag to track when to stop
-
-  motors.setSpeeds(300, 300);  // Start moving
-
-  while (true) {
-    int sensorValue = analogRead(SENSOR_PIN);  // Continuously update sensor
-
-    Serial.print("Sensor Value: ");
-    Serial.println(sensorValue);
-
-    // Call the buzzer function separately to prevent stopping delays
-    beepBuzzer(sensorValue);
-
-    // **STOP MOTORS IMMEDIATELY IF OBSTACLE IS TOO CLOSE**
-    if (sensorValue > OBSTACLE_THRESHOLD) {
-      Serial.println("Too Close! Stopping motors...");
-      motors.setSpeeds(0, 0);  // Stop motors immediately
-      obstacleDetected = true;  // Set flag to prevent restarting
-    } 
-    else if (sensorValue > CLOSE_RANGE) {
-      Serial.println("Very Close!");
-      motors.setSpeeds(0, 0);
-      obstacleDetected = true;
+      break;
+      // Optionally, add a small delay or a final message,
+      // then exit (or loop indefinitely to hold the stop state)
     }
-    else if (sensorValue > MID_RANGE) {
-      Serial.println("Close!");
-      motors.setSpeeds(0, 0);
-      obstacleDetected = true;
-    }
-    else if (sensorValue > FAR_RANGE) {
-      Serial.println("Approaching...");
-    } 
-    else {
-      Serial.println("No obstacle detected.");
-    }
-
-    // **Wait Until the Obstacle is Cleared Before Moving Again**
-    if (obstacleDetected) {
-      while (analogRead(SENSOR_PIN) > MID_RANGE) {
-        Serial.println("Waiting for obstacle to clear...");
-        motors.setSpeeds(0, 0);  // Keep motors stopped
-        delay(100);  // Short delay to prevent excessive sensor reading
-      }
-      Serial.println("Obstacle cleared! Resuming movement...");
-      obstacleDetected = false;  // Reset flag when clear
-      motors.setSpeeds(300, 300);  // Resume movement
-    }
+    
+    // Optionally, you can include beeping feedback here if needed.
+    
+    delay(100);  // Short delay between readings
   }
 }
 */
-// Function to control buzzer beeping based on distance
-/*
-void beepBuzzer(int sensorValue) {
-  int beepDelay = 0; // Time between beeps
-
-  // Adjust beep frequency based on distance
-  if (sensorValue > 1550) {  // Too close
-    beepDelay = 100;  
-  } 
-  else if (sensorValue > 1500) {  // Very close
-    beepDelay = 250;  
-  }
-  else if (sensorValue > 1200) {  // Close
-    beepDelay = 500;  
-  }
-  else if (sensorValue > 1000) {  // Approaching
-    beepDelay = 1000;  
-  } 
-  else {
-    beepDelay = 0;  // No obstacle detected
-  }
-
-  // Non-blocking beep logic using millis()
-  static unsigned long lastBeepTime = 0;  // Stores the last beep time
-  if (beepDelay > 0 && millis() - lastBeepTime >= beepDelay) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(100);  // Short beep duration
-    digitalWrite(BUZZER_PIN, LOW);
-    lastBeepTime = millis();  // Reset timer
-  }
-}
-
-// Function to check parking sensor and activate buzzer
-void checkParkingSensor() {
-  int OBSTACLE_THRESHOLD = 1550;  
-  int CLOSE_RANGE = 1500;
-  int MID_RANGE = 1200;
-  int FAR_RANGE = 1000;
-  bool obstacleDetected = false;  // Flag to track when to stop
-
-  motors.setSpeeds(300, 300);  // Start moving
-
-  while (true) {
-    int sensorValue = analogRead(SENSOR_PIN);  // Continuously update sensor
-
-    Serial.print("Sensor Value: ");
-    Serial.println(sensorValue);
-
-    // Call the buzzer function separately to prevent stopping delays
-    beepBuzzer(sensorValue);
-
-    // **STOP MOTORS IMMEDIATELY IF OBSTACLE IS TOO CLOSE**
-    if (sensorValue > OBSTACLE_THRESHOLD) {
-      Serial.println("Too Close! Stopping motors...");
-      motors.setSpeeds(0, 0);  // Stop motors immediately
-      obstacleDetected = true;  // Set flag to prevent restarting
-    } 
-    else if (sensorValue > CLOSE_RANGE) {
-      Serial.println("Very Close!");
-      motors.setSpeeds(0, 0);
-      obstacleDetected = true;
-    }
-    else if (sensorValue > MID_RANGE) {
-      Serial.println("Close!");
-      motors.setSpeeds(0, 0);
-      obstacleDetected = true;
-    }
-    else if (sensorValue > FAR_RANGE) {
-      Serial.println("Approaching...");
-    } 
-    else {
-      Serial.println("No obstacle detected.");
-    }
-
-    // **Wait Until the Obstacle is Cleared Before Moving Again**
-    if (obstacleDetected) {
-      while (analogRead(SENSOR_PIN) > MID_RANGE) {
-        Serial.println("Waiting for obstacle to clear...");
-        motors.setSpeeds(0, 0);  // Keep motors stopped
-        delay(100);  // Short delay to prevent excessive sensor reading
-      }
-      Serial.println("Obstacle cleared! Resuming movement...");
-      obstacleDetected = false;  // Reset flag when clear
-      motors.setSpeeds(300, 300);  // Resume movement
-    }
-  }
-}
-*/
-
-//right one 
-void checkParkingSensor() {
-  int OBSTACLE_THRESHOLD = 1550;  
-  int CLOSE_RANGE = 1500;
-  int MID_RANGE = 1200;
-  int FAR_RANGE = 1000;
-  int beepDelay = 0; 
-  bool obstacleDetected = false;  // Flag to track when to stop
-
-  motors.setSpeeds(300, 300);  // Start moving
-
-  while (true) {
-    int sensorValue = analogRead(SENSOR_PIN);  // Continuously update sensor
-
-    Serial.print("Sensor Value: ");
-    Serial.println(sensorValue);
-
-    // **STOP MOTORS IMMEDIATELY IF OBSTACLE IS TOO CLOSE**
-    if (sensorValue > OBSTACLE_THRESHOLD) {
-      Serial.println("Too Close! Stopping motors...");
-      motors.setSpeeds(0, 0);  // Stop motors immediately
-     // beepDelay = 100;
-      obstacleDetected = true;  // Set flag to prevent restarting
-    } 
-    else if (sensorValue > CLOSE_RANGE) {
-      Serial.println("Very Close!");
-     // beepDelay = 250;
-      motors.setSpeeds(0, 0);
-      obstacleDetected = true;
-    }
-    else if (sensorValue > MID_RANGE) {
-      Serial.println("Close!");
-     // beepDelay = 500;
-      motors.setSpeeds(0, 0);
-      obstacleDetected = true;
-    }
-    else if (sensorValue > FAR_RANGE) {
-      Serial.println("Approaching...");
-    //  beepDelay = 1000;
-    } 
-    else {
-      Serial.println("No obstacle detected.");
-      beepDelay = 0;
-    }
-
-   // **Beep Logic Without Blocking Execution**
-    if (beepDelay > 0) {
-      digitalWrite(BUZZER_PIN, HIGH);
-      delay(100);
-      digitalWrite(BUZZER_PIN, LOW);
-      delay(beepDelay - 100);
-    }
-
-    // **Wait Until the Obstacle is Cleared Before Moving Again**
-    if (obstacleDetected) {
-      while (analogRead(SENSOR_PIN) > MID_RANGE) {
-        Serial.println("Waiting for obstacle to clear...");
-        motors.setSpeeds(0, 0);  // Keep motors stopped
-        delay(100);  // Short delay to prevent excessive sensor reading
-      }
-      Serial.println("Obstacle cleared! Resuming movement...");
-      obstacleDetected = false;  // Reset flag when clear
-      motors.setSpeeds(300, 300);  // Resume movement
-    }
-  }
-}
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
     Serial.begin(115200);
+    Wire.begin(I2C_SDA, I2C_SCL);
+
+if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;);
+  }
+
+  // Show startup message
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(1, 20);
+  display.println("Starting..");
+  display.display();
+  delay(1000);
 
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
@@ -939,9 +720,9 @@ void setup() {
     pinMode(motor2PWM,OUTPUT);
     pinMode(motor2Phase,OUTPUT);
 
-    //connectToWiFi();
+   // connectToWiFi();
 
-    //getRoute();
+   // getRoute();
     
     g.addEdge(0, 6, 78, 0, 270);
     g.addEdge(6, 0, 78, 90, 180);
@@ -968,36 +749,43 @@ void setup() {
     for (int i = 0; i < 5; i++) {
     pinMode(analogPin[i], INPUT);  // Sensor pins setup
   }
+
+  }
+  //UNCOMMENT 
 /*
+  for (int i = 0; i < 10; i++){
+    Serial.print(serverRoute[i]);
+    Serial.print("  ");
+  }
+  Serial.println();
+
     postBody="position=";
     position="0";
     postBody += position;
     followLine();
     updateServer();
+
+    int test[8];
+    for (int i  = 0; i < 8; i++) {
+      test[i] = -1;
+    }
  
-  */  
+    g.dijkstra(4, 5, test);
     
-}
+}*/
 
 void loop() {
-  checkParkingSensor();
-  /*
-  path(0,6);
-  path(6,1);
-  updateServer();
-  path(1,6);
-  path(6,0);
-  updateServer();
-  delay(15000);
-  */
- 
-
-
-  
+ checkParkingSensor();
+ //UNCOMMENT 
+/*
   while (serverRoute[j] != -1) {
     serverPath(serverRoute[i], serverRoute[j]);
     i++;
     j++;
   }
-  
+  while(true) {
+    delay(1000);
+  }
+*/
+
 }
