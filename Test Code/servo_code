@@ -1,0 +1,35 @@
+#include <ESP32Servo.h>
+
+Servo HeadServo;
+
+// servo control pin (using pin 9 
+const int servoPin = 9;
+
+void setup() {
+  Serial.begin(115200);
+  
+  
+  HeadServo.attach(servoPin);
+  
+  // Set servo to center (90°) initially
+  HeadServo.write(90);
+  delay(500);  // time for servo to move
+}
+
+void loop() {
+  // Turn the printing head to the left (0°)
+  HeadServo.write(0);
+  Serial.println("Servo: 0°");
+  delay(1000);  // Wait 1 second
+  
+  // Turn to the right (180°)
+  HeadServo.write(180);
+  Serial.println("Servo: 180°");
+  delay(1000);  // Wait 1 second
+  
+  // Return to the center (90°)
+  HeadServo.write(90);
+  Serial.println("Servo: 90°");
+  delay(1000);  // Wait 1 second
+}
+
