@@ -53,6 +53,7 @@ int routeSize ;
 int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
 
+bool nodeFlag = false;
 
 int Speed = 350; //standard speed
 int turnSpeed = 248;
@@ -343,6 +344,9 @@ void pid(){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   void followLine(bool nodeFlag) {
+    motors.setSpeeds(Speed, Speed);
+    delay(200);
+
     while(true) {
       if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
         motors.setSpeeds(50, turnSpeed);
@@ -356,6 +360,9 @@ void pid(){
         if (nodeFlag) {
           motors.setSpeeds(0, 0);
           nodeFlag = false;
+        }
+        else {
+          delay(50);
         }
         break;
       }
@@ -485,26 +492,19 @@ void serverPath(int prev, int next) {
   int route[10];
   int a = 0;
   int b = 1;
-  bool nodeFlag = false;
 
   for(int k = 0; k < 10; k++) { 
     route[k] = -1;
   }
   g.dijkstra(prev, next, route);
-
-  for (int i = 0; i < 10; i++) {
-    Serial.print(route[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
   
   while(route[b] != -1) {
     if (route[b] == next) {
-      path(route[a], route[b], true);
-      updateServer();
+      nodeFlag = true;
+      path(route[a], route[b], nodeFlag);
     }
     else {
-      path(route[a], route[b], false);
+      path(route[a], route[b], nodeFlag);
     }
     if (obstacleFlag == true) {
       g.removeEdge(route[a], route[b]);
@@ -524,6 +524,7 @@ void serverPath(int prev, int next) {
       
       while (redirectRoute[d] != -1) {
         if (route[d] == next) {
+          nodeFlag = true;
           path(route[c], route[d], true);
         }
         else {
@@ -532,13 +533,17 @@ void serverPath(int prev, int next) {
         c++;
         d++;
       }
-      obstacleFlag = false;
       break;
     }
     a++;
     b++;
+    if (nodeFlag) {
+      updateServer();
+    }
+    obstacleFlag = false;
   }
   motors.setSpeeds(0, 0); 
+  nodeFlag = false;
   delay(200);
 }
 
@@ -553,13 +558,70 @@ void checkParkingSensor() {
     Serial.print("Sensor Value: ");
     Serial.println(sensorValue);
 
+    beepBuzzer(sensorValue);
+
     if (sensorValue > obstacleThreshold) {
       Serial.println("Wall detected! Stopping permanently...");
       motors.setSpeeds(0, 0);  // Stop the robot
       break;
     }
     
+    
     delay(100);  
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void beepBuzzer(int sensorValue) {
+  static unsigned long lastToggleTime = 0;
+  static bool buzzerOn = false;
+  unsigned long currentTime = millis();
+  
+  // Define on/off durations based on sensor reading 
+  unsigned long onDuration = 0;
+  unsigned long offDuration = 0;
+  
+  if (sensorValue > 2000) {       // Too close: almost continuous beep
+    onDuration = 200;             // Buzzer on for 200ms
+    offDuration = 50;             // Off for 50ms
+  } 
+  else if (sensorValue > 1800) {  // Very close: rapid beeping
+    onDuration = 100;             // On for 100ms
+    offDuration = 100;  
+    motors.setSpeeds(100, 100);          // Off for 100ms
+  }
+  else if (sensorValue > 1400) {  // Close: moderate beeping
+    onDuration = 70;              // On for 70ms
+    offDuration = 180; 
+    motors.setSpeeds(150, 150);           // Off for 180ms
+  }
+  else if (sensorValue > 1000) {  // Approaching: slower beeps
+    onDuration = 50;              // On for 50ms
+    offDuration = 350; 
+    motors.setSpeeds(250, 250);        // Off for 350ms
+  } 
+  else {
+    // No obstacle
+    digitalWrite(BUZZER_PIN, LOW);
+  //  digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+    return;
+  }
+  
+  // Toggle buzzer state based on elapsed time 
+  if (buzzerOn && (currentTime - lastToggleTime >= onDuration)) {
+    digitalWrite(BUZZER_PIN, LOW);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+  }
+  else if (!buzzerOn && (currentTime - lastToggleTime >= offDuration)) {
+    digitalWrite(BUZZER_PIN, HIGH);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = true;
+    lastToggleTime = currentTime;
   }
 }
 
@@ -621,4 +683,6 @@ void loop() {
   while(true) {
     delay(1000);
   }
+
+
 }
