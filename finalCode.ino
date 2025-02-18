@@ -196,6 +196,10 @@ class Graph {
         }
     }
 
+    int matrix(int prev, int next) {
+      return adjMatrix[prev][next];
+    }
+
     void removeEdge (unsigned int v, unsigned int w) {
       if (v < 8 && w < 8) { // Ensures node exists
         adjMatrix[v][w] = 0;
@@ -393,6 +397,13 @@ void pid(){
         pid(); // To be implemented
       }
 
+      if (analogRead(SENSOR_PIN) > 3100) {
+        Serial.println(analogRead(SENSOR_PIN));
+        motors.setSpeeds(0, 0);
+        obstacleFlag = true;
+        break;
+      }
+
       for (int i = 0; i < 5; i++) {
           analogValue[i] = analogRead(analogPin[i]);
       } 
@@ -510,20 +521,22 @@ void serverPath(int prev, int next) {
   int route[10];
   int a = 0;
   int b = 1;
-  for(int k = 0; k < 10; k++) {
+
+  for(int k = 0; k < 10; k++) { 
     route[k] = -1;
   }
   g.dijkstra(prev, next, route);
-  Serial.print(prev);
-  Serial.print("->");
-  Serial.println(next);
+
   for (int i = 0; i < 10; i++) {
-    Serial.print((route[i]));
-    Serial.print(" " );
+    Serial.print(route[i]);
+    Serial.print(" ");
   }
   Serial.println();
+  
   while(route[b] != -1) {
     path(route[a], route[b]);
+
+
     if (obstacleFlag == true) {
       g.removeEdge(route[a], route[b]);
       motors.setSpeeds(200, -200);
@@ -532,9 +545,13 @@ void serverPath(int prev, int next) {
       yaw = g.returnFinalDir(route[b], route[a]);
 
       int redirectRoute[10];
+      for(int k = 0; k < 10; k++) {
+        redirectRoute[k] = -1;
+      }
+
       int c = 0;
       int d = 1;
-      g.dijkstra(route[a], serverRoute[j], redirectRoute);
+      g.dijkstra(route[a], next, redirectRoute);
       
       while (redirectRoute[d] != -1) {
         path(redirectRoute[c], redirectRoute[d]);
@@ -647,17 +664,9 @@ void setup() {
     followLine();
     updateServer();
 
-    int test[8];
-    for (int i  = 0; i < 8; i++) {
-      test[i] = -1;
-    }
- 
-    g.dijkstra(4, 5, test);
-    
 }
 
 void loop() {
-
 
   while (serverRoute[j] != -1) {
     serverPath(serverRoute[i], serverRoute[j]);
