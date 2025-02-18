@@ -21,7 +21,6 @@
 DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 
 // Node A = Node 6, Node B = Node 7
-
 #define I2C_SDA 13//OLED Pins 
 #define I2C_SCL 14
 
@@ -42,9 +41,7 @@ int motor2PWM = 39;
 int motor2Phase = 20;
 
 int threshold = 1000;
-
 int yaw = 0;
-
 int i = 0;
 int j = 1;
 
@@ -56,6 +53,7 @@ int routeSize ;
 int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
 
+bool nodeFlag = false;
 
 int Speed = 350; //standard speed
 int turnSpeed = 248;
@@ -105,7 +103,6 @@ void connectToWiFi() {
     delay(300);
   }
   Serial.println("Connected");
-  //Serial.print("Obtaining IP address");
   Serial.flush();
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,8 +148,8 @@ void updateServer() {
   postBody += position;
   Serial.print("Next Node: ") ;
   Serial.println(position);
-  
 }
+
 void getRoute() {
   connect(); 
   client.println("GET /api/getRoute/lkim7619 HTTP/1.1");
@@ -209,7 +206,6 @@ class Graph {
             Serial.println("Error: Vertex out of bounds"); // If node doesn't exist
         }
     }
-
 
     // Prints Adjacency Matrix - only for testing purposes
     void displayMatrix() {
@@ -278,22 +274,6 @@ class Graph {
         printPath(parent, dest, route, index);
     }
 
-    // Print the distance and paths
-    /*
-    void printSolution(int dist[], int parent[], int src, int dest) {
-        Serial.println("Vertex\tDistance\tPath");
-        Serial.print(dest);
-        Serial.print("\t");
-        Serial.print(dist[dest]);
-        Serial.print("\t\t");
-        int index = 0;
-        printPath(parent, dest, route, index);
-        Serial.println();
-    }
-    */
-
-
-    // Prints the shortest path - uses parent array
     void printPath(int parent[], int j, int route[], int &index) {
         if (parent[j] == -1) {
             route[index++] = j;
@@ -332,7 +312,6 @@ void convertArray(String data) {
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
 void pid(){
   int error = (analogRead(pins[1])-analogRead(pins[3]));
 
@@ -360,15 +339,13 @@ void pid(){
     RSP = -0;
   }
   motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
-
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
-  void followLine() {
+  void followLine(bool nodeFlag) {
+    motors.setSpeeds(Speed, Speed);
+    delay(200);
 
     while(true) {
       if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
@@ -380,13 +357,13 @@ void pid(){
       }
       //NODE Code
       else if (analogRead(pins[1]) < threshold && analogRead(pins[2]) < threshold && analogRead(pins[3]) < threshold ) {
-        Serial.print("Node detected");
-        motors.setSpeeds(0, 0); //stop
-        delay(100);
-        motors.setSpeeds(300, 300);
-        delay(200);
-        motors.setSpeeds(0, 0);
-        delay(200);
+        if (nodeFlag) {
+          motors.setSpeeds(0, 0);
+          nodeFlag = false;
+        }
+        else {
+          delay(50);
+        }
         break;
       }
 
@@ -409,7 +386,6 @@ void pid(){
       } 
     }
   }
-
 
   void followSensorLine() {
     while(true) {
@@ -458,15 +434,15 @@ void pid(){
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
 void setTimeAng(int targetAngle, int prev, int next) {
-    Serial.print("Initial yaw = ");
-    Serial.println(yaw);
-
     if (targetAngle == yaw) {
         return;  // Exit if already at the target angle
     }
+
+    motors.setSpeeds(100, 100); 
+    delay(400);
+    motors.setSpeeds(0, 0);
+    delay(200);
 
     int angleDifference = targetAngle - yaw;  
     int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
@@ -495,14 +471,10 @@ void setTimeAng(int targetAngle, int prev, int next) {
     }
 
     motors.setSpeeds(0, 0);
-    delay(100); // Small pause
-
-
     delay(500); // Small delay before following the line
 }
 
-
-void path(int prev, int next) {
+void path(int prev, int next, bool nodeFlag) {
     int angle = g.returnInitialDir(prev, next);
     setTimeAng(angle, prev, next);
 
@@ -510,9 +482,8 @@ void path(int prev, int next) {
       followSensorLine();
       checkParkingSensor();
     }
-
     else {
-      followLine();
+      followLine(nodeFlag);
     }
     yaw = g.returnFinalDir(prev, next);
 }
@@ -526,22 +497,20 @@ void serverPath(int prev, int next) {
     route[k] = -1;
   }
   g.dijkstra(prev, next, route);
-
-  for (int i = 0; i < 10; i++) {
-    Serial.print(route[i]);
-    Serial.print(" ");
-  }
-  Serial.println();
   
   while(route[b] != -1) {
-    path(route[a], route[b]);
-
-
+    if (route[b] == next) {
+      nodeFlag = true;
+      path(route[a], route[b], nodeFlag);
+    }
+    else {
+      path(route[a], route[b], nodeFlag);
+    }
     if (obstacleFlag == true) {
       g.removeEdge(route[a], route[b]);
       motors.setSpeeds(200, -200);
       delay(1600);
-      followLine();
+      followLine(nodeFlag);
       yaw = g.returnFinalDir(route[b], route[a]);
 
       int redirectRoute[10];
@@ -554,63 +523,55 @@ void serverPath(int prev, int next) {
       g.dijkstra(route[a], next, redirectRoute);
       
       while (redirectRoute[d] != -1) {
-        path(redirectRoute[c], redirectRoute[d]);
+        if (route[d] == next) {
+          nodeFlag = true;
+          path(route[c], route[d], true);
+        }
+        else {
+          path(route[c], route[d], false);
+        }
         c++;
         d++;
       }
-      obstacleFlag = false;
       break;
     }
     a++;
     b++;
+    if (nodeFlag) {
+      updateServer();
+    }
+    obstacleFlag = false;
   }
-  motors.setSpeeds(0, 0); //stop
+  motors.setSpeeds(0, 0); 
+  nodeFlag = false;
   delay(200);
-  updateServer();
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
 void checkParkingSensor() {  
-  // The idea here is to drive straight and continuously monitor the front sensor.
-  // Once the sensor reading exceeds a threshold (i.e., the wall is detected),
-  // stop the robot and remain stopped.
-
   Serial.println("Entering wall detection mode...");
-  
-  // Drive forward (if not already set) while monitoring the sensor:
-  motors.setSpeeds(282, 300);  // Drive straight
+  motors.setSpeeds(282, 300);  
 
   while (true) {
-    int sensorValue = analogRead(SENSOR_PIN);  // Continuously update sensor
+    int sensorValue = analogRead(SENSOR_PIN);  
     Serial.print("Sensor Value: ");
     Serial.println(sensorValue);
 
-    // When the sensor reading indicates the wall is near:
     if (sensorValue > obstacleThreshold) {
       Serial.println("Wall detected! Stopping permanently...");
       motors.setSpeeds(0, 0);  // Stop the robot
       break;
-      // Optionally, add a small delay or a final message,
-      // then exit (or loop indefinitely to hold the stop state)
     }
     
-    // Optionally, you can include beeping feedback here if needed.
-    
-    delay(100);  // Short delay between readings
+    delay(100);  
   }
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
     Serial.begin(115200);
-
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
 
@@ -623,7 +584,6 @@ void setup() {
     pinMode(motor2Phase,OUTPUT);
 
     connectToWiFi();
-
     getRoute();
     
     g.addEdge(0, 6, 78, 0, 270);
@@ -643,27 +603,16 @@ void setup() {
     g.addEdge(4, 7, 150, 180, 270);
     g.addEdge(7, 4, 150, 90, 0);
     g.addEdge(7, 5, 1, 180, 180);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
-     
-
-    //Serial.println("Adjacency Matrix:");
-    //g.displayMatrix();
 
     for (int i = 0; i < 5; i++) {
     pinMode(analogPin[i], INPUT);  // Sensor pins setup
   }
 
-  for (int i = 0; i < 10; i++){
-    Serial.print(serverRoute[i]);
-    Serial.print("  ");
-  }
-  Serial.println();
-
     postBody="position=";
     position="0";
     postBody += position;
-    followLine();
+    followLine(true);
     updateServer();
-
 }
 
 void loop() {
@@ -674,15 +623,7 @@ void loop() {
     j++;
   }
 
-
   while(true) {
     delay(1000);
   }
-
-
-
-  
-
-  
-
 }
