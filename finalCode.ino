@@ -385,7 +385,7 @@ void pid(){
         pid(); // To be implemented
       }
 
-      if (analogRead(SENSOR_PIN) > 3000) {
+      if (analogRead(SENSOR_PIN) > 3300) {
         Serial.println(analogRead(SENSOR_PIN));
         motors.setSpeeds(0, 0);
         digitalWrite(ledPin1, HIGH);
@@ -458,18 +458,17 @@ void setTimeAng(int targetAngle, int prev, int next) {
     delay(200);
 
     int angleDifference = targetAngle - yaw;  
+   while (angleDifference > 180) {
+        angleDifference -= 360;
+    }
+    while (angleDifference < -180) {
+        angleDifference += 360;
+    }
+
     int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
 
     int nodes = (abs(angleDifference)/90);
-    Serial.print("Prev = ");
-    Serial.println(prev);
-    Serial.print("Next = ");
-    Serial.println(next);
-    Serial.print("Nodes = ");
-    Serial.println(nodes);
     int turnTime = nodes * 800;
-    Serial.print("turnTime = ");
-    Serial.println(turnTime);
 
     // Start turning
     if (nodes != 0) { // double check calculation
@@ -546,13 +545,8 @@ void serverPath(int prev, int next) {
     
     a++;
     b++;
-    
-    if (nodeFlag) {
-      updateServer();
-      break;
-    }
   }
-  
+  updateServer();
   motors.setSpeeds(0, 0); 
   digitalWrite(ledPin1, HIGH);
   digitalWrite(ledPin2, HIGH);
