@@ -505,6 +505,8 @@ void serverPath(int prev, int next) {
   int a = 0;
   int b = 1;
   display.clearDisplay();
+  digitalWrite(ledPin1, LOW);
+  digitalWrite(ledPin2, LOW);
 
   for (int k = 0; k < 10; k++) { 
     route[k] = -1;
