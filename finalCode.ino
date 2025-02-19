@@ -5,8 +5,13 @@
 #include <limits.h>
 #include <DRV8835MotorShield.h>
 
+//#include <ESP32Servo.h>
+
 #define SENSOR_PIN 16  
 #define BUZZER_PIN 17  // Buzzer for alerts
+
+#define ledPin1 21
+#define ledPin2 47 
 
 #define M1PWM 37
 #define M1Phase 38
@@ -34,6 +39,9 @@ int CLOSE_RANGE = 1700;
 int MID_RANGE = 1500;
 int FAR_RANGE = 1400;
 bool obstacleFlag = false;
+
+//Servo HeadServo;
+const int servoPin = 9;
 
 int motor1PWM = 37;
 int motor1Phase = 38;
@@ -310,6 +318,7 @@ void convertArray(String data) {
     serverRoute[i] = -1;
   }
 }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void pid(){
@@ -343,7 +352,7 @@ void pid(){
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-  void followLine(bool nodeFlag) {
+  void followLine() {
     motors.setSpeeds(Speed, Speed);
     delay(200);
 
@@ -359,6 +368,8 @@ void pid(){
       else if (analogRead(pins[1]) < threshold && analogRead(pins[2]) < threshold && analogRead(pins[3]) < threshold ) {
         if (nodeFlag) {
           motors.setSpeeds(0, 0);
+          digitalWrite(ledPin1, HIGH);
+          digitalWrite(ledPin2, HIGH);
           nodeFlag = false;
         }
         else {
@@ -374,9 +385,11 @@ void pid(){
         pid(); // To be implemented
       }
 
-      if (analogRead(SENSOR_PIN) > 3100) {
+      if (analogRead(SENSOR_PIN) > 3000) {
         Serial.println(analogRead(SENSOR_PIN));
         motors.setSpeeds(0, 0);
+        digitalWrite(ledPin1, HIGH);
+        digitalWrite(ledPin2, HIGH);
         obstacleFlag = true;
         break;
       }
@@ -440,7 +453,7 @@ void setTimeAng(int targetAngle, int prev, int next) {
     }
 
     motors.setSpeeds(100, 100); 
-    delay(400);
+    delay(700);
     motors.setSpeeds(0, 0);
     delay(200);
 
@@ -474,7 +487,7 @@ void setTimeAng(int targetAngle, int prev, int next) {
     delay(500); // Small delay before following the line
 }
 
-void path(int prev, int next, bool nodeFlag) {
+void path(int prev, int next) {
     int angle = g.returnInitialDir(prev, next);
     setTimeAng(angle, prev, next);
 
@@ -483,7 +496,7 @@ void path(int prev, int next, bool nodeFlag) {
       checkParkingSensor();
     }
     else {
-      followLine(nodeFlag);
+      followLine();
     }
     yaw = g.returnFinalDir(prev, next);
 }
@@ -493,59 +506,60 @@ void serverPath(int prev, int next) {
   int a = 0;
   int b = 1;
 
-  for(int k = 0; k < 10; k++) { 
+  for (int k = 0; k < 10; k++) { 
     route[k] = -1;
   }
+
   g.dijkstra(prev, next, route);
   
-  while(route[b] != -1) {
+  while (route[b] != -1) {
+    
     if (route[b] == next) {
       nodeFlag = true;
-      path(route[a], route[b], nodeFlag);
     }
-    else {
-      path(route[a], route[b], nodeFlag);
-    }
+    path(route[a], route[b]);
+    
     if (obstacleFlag == true) {
       g.removeEdge(route[a], route[b]);
       motors.setSpeeds(200, -200);
+      nodeFlag = true;
       delay(1600);
-      followLine(nodeFlag);
+      followLine();
+      nodeFlag = false;
+
       yaw = g.returnFinalDir(route[b], route[a]);
 
-      int redirectRoute[10];
-      for(int k = 0; k < 10; k++) {
+      int redirectRoute[10]; 
+      for (int k = 0; k < 10; k++) {
         redirectRoute[k] = -1;
       }
-
-      int c = 0;
-      int d = 1;
       g.dijkstra(route[a], next, redirectRoute);
-      
-      while (redirectRoute[d] != -1) {
-        if (route[d] == next) {
-          nodeFlag = true;
-          path(route[c], route[d], true);
-        }
-        else {
-          path(route[c], route[d], false);
-        }
-        c++;
-        d++;
+
+      for (int i = 0; i < 10; i++) {
+        route[i] = redirectRoute[i];
       }
-      break;
+      a = -1;
+      b = 0;
+
+      obstacleFlag = false;
     }
+    
     a++;
     b++;
+    
     if (nodeFlag) {
       updateServer();
+      break;
     }
-    obstacleFlag = false;
   }
+  
   motors.setSpeeds(0, 0); 
+  digitalWrite(ledPin1, HIGH);
+  digitalWrite(ledPin2, HIGH);
   nodeFlag = false;
   delay(200);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -558,9 +572,13 @@ void checkParkingSensor() {
     Serial.print("Sensor Value: ");
     Serial.println(sensorValue);
 
+    beepBuzzer(sensorValue);
+
     if (sensorValue > obstacleThreshold) {
       Serial.println("Wall detected! Stopping permanently...");
       motors.setSpeeds(0, 0);  // Stop the robot
+      digitalWrite(ledPin1, HIGH);
+      digitalWrite(ledPin2, HIGH);
       break;
     }
     
@@ -570,13 +588,64 @@ void checkParkingSensor() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void beepBuzzer(int sensorValue) {
+  static unsigned long lastToggleTime = 0;
+  static bool buzzerOn = false;
+  unsigned long currentTime = millis();
+  
+  // Define on/off durations based on sensor reading 
+  unsigned long onDuration = 0;
+  unsigned long offDuration = 0;
+  
+  if (sensorValue > 2000) {       // Too close: almost continuous beep
+    onDuration = 200;             // Buzzer on for 200ms
+    offDuration = 50;             // Off for 50ms
+  } 
+  else if (sensorValue > 500) {  // Very close: rapid beeping
+    onDuration = 100;             // On for 100ms
+    offDuration = 100;  
+  }
+  else if (sensorValue < 500) {  // Close: moderate beeping
+    onDuration = 70;              // On for 70ms
+    offDuration = 180; 
+  }
+  
+  else {
+    // No obstacle
+    digitalWrite(BUZZER_PIN, LOW);
+  //  digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+    return;
+  }
+  
+  // Toggle buzzer state based on elapsed time 
+  if (buzzerOn && (currentTime - lastToggleTime >= onDuration)) {
+    digitalWrite(BUZZER_PIN, LOW);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+  }
+  else if (!buzzerOn && (currentTime - lastToggleTime >= offDuration)) {
+    digitalWrite(BUZZER_PIN, HIGH);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = true;
+    lastToggleTime = currentTime;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void setup() {
     Serial.begin(115200);
+    delay(1000);
+    motors.setSpeeds(0, 0);
+    
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
 
-    motors.setSpeeds(0, 0);
-    delay(1000);
+    pinMode(ledPin1, OUTPUT);
+    pinMode(ledPin2, OUTPUT);
 
     pinMode(motor1PWM,OUTPUT);
     pinMode(motor1Phase,OUTPUT);
@@ -585,7 +654,11 @@ void setup() {
 
     connectToWiFi();
     getRoute();
-    
+
+    //HeadServo.attach(servoPin);
+    //HeadServo.write(90);
+    delay(500);  
+
     g.addEdge(0, 6, 78, 0, 270);
     g.addEdge(6, 0, 78, 90, 180);
     g.addEdge(0, 4, 80, 180, 180);
@@ -605,15 +678,18 @@ void setup() {
     g.addEdge(7, 5, 1, 180, 180);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
 
     for (int i = 0; i < 5; i++) {
-    pinMode(analogPin[i], INPUT);  // Sensor pins setup
-  }
+      pinMode(analogPin[i], INPUT);  // Sensor pins setup
+    }
 
     postBody="position=";
     position="0";
     postBody += position;
-    followLine(true);
+    nodeFlag = true;
+    followLine();
+    nodeFlag = false;
     updateServer();
 }
+
 
 void loop() {
 
@@ -626,4 +702,5 @@ void loop() {
   while(true) {
     delay(1000);
   }
+
 }
