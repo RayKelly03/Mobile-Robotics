@@ -642,7 +642,13 @@ void setup() {
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
 
+
     // Initialize OLED DISPLAY
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+      Serial.println(F("SSD1306 allocation failed"));
+      for (;;);
+    }
+    
 
     // initial message
     display.clearDisplay();
