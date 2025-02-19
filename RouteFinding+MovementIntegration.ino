@@ -1,23 +1,47 @@
 #include <Wire.h>
+#include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
 #include <MPU6050.h>
 #include <limits.h>
 #include <DRV8835MotorShield.h>
 
+//#include <ESP32Servo.h>
+
 #define SENSOR_PIN 16  
 #define BUZZER_PIN 17  // Buzzer for alerts
+
+#define ledPin1 21
+#define ledPin2 47 
 
 #define M1PWM 37
 #define M1Phase 38
 #define M2PWM 39  
 #define M2Phase 20
+#define BUFSIZE 512
+#include <SPI.h>
+#include <WiFi.h>
+#include <WiFiServer.h>
 
 // Motor driver library call
 DRV8835MotorShield motors(M1Phase, M1PWM, M2Phase, M2PWM);
 
-
-
 // Node A = Node 6, Node B = Node 7
+#define I2C_SDA 13//OLED Pins 
+#define I2C_SCL 14
 
+// OLED Display Configuration
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+int obstacleThreshold = 2100;
+int CLOSE_RANGE = 1700;
+int MID_RANGE = 1500;
+int FAR_RANGE = 1400;
+bool obstacleFlag = false;
+
+//Servo HeadServo;
+const int servoPin = 9;
 
 int motor1PWM = 37;
 int motor1Phase = 38;
@@ -25,9 +49,7 @@ int motor2PWM = 39;
 int motor2Phase = 20;
 
 int threshold = 1000;
-
 int yaw = 0;
-
 int i = 0;
 int j = 1;
 
@@ -35,13 +57,14 @@ int Inf = INT_MAX;
 int prev = -1;
 int next = -1;
 int serverRoute[10] = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
-
+int routeSize ;
 int analogValue[5] = {0, 0, 0, 0, 0};  // Store sensor values
 int analogPin[5] = {4, 5, 6, 7, 15};    // Sensor pins
 
+bool nodeFlag = false;
 
-int Speed = 330; //standard speed
-int turnSpeed = 262.5;
+int Speed = 350; //standard speed
+int turnSpeed = 248;
 int LSP = 0; // speed variables for setting through PID
 int RSP = 0;
 
@@ -61,6 +84,92 @@ float Kp = 0;
 float Ki = 0;
 float Kd= 0;
 
+//WIFI Details
+char ssid[] = "iot";
+char password[] = "pashalik20pedipulation";
+String postBody;
+String position;
+String r;
+String s;
+String r1;
+String s1;
+int bk=0;
+int cp; //current position
+char server[] = "3.250.38.184";
+int port = 8000;
+WiFiClient client;
+
+void connectToWiFi() {
+  Serial.print("Connecting to network: ");  
+  Serial.print(ssid);
+  Serial.flush();
+  WiFi.begin(ssid, password);
+  
+  while (WiFi.status() != WL_CONNECTED) {
+    Serial.print(".");
+    Serial.flush();
+    delay(300);
+  }
+  Serial.println("Connected");
+  Serial.flush();
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool connect() {
+  Serial.println("Connecting to server");
+  if (!client.connect(server, port)) {
+    Serial.println("error connecting to server");
+    return false;
+  }
+  Serial.println("Connected to server");
+  return true;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// read buffer size for HTTP response
+String readResponse() {
+  char buffer[BUFSIZE];
+  memset(buffer, 0, BUFSIZE);
+  client.readBytes(buffer, BUFSIZE);
+  return String(buffer);
+}
+
+String getResponseBody(String& response) {
+  int split = response.indexOf("\r\n\r\n");
+  String body = response.substring(split+4);
+  body.trim();
+  return body;
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void updateServer() {
+  connect()     ;
+  client.println("POST /api/arrived/lkim7619 HTTP/1.1");
+  client.println("Content-Type: application/x-www-form-urlencoded");
+  client.print("Content-Length: ");
+  client.println(postBody.length());
+  client.println("Connection: close");
+  client.println();
+  client.println(postBody);
+  r = readResponse();
+  s = getResponseBody(r);
+  client.stop();
+  position = s;
+  postBody = "position=";
+  postBody += position;
+  Serial.print("Next Node: ") ;
+  Serial.println(position);
+}
+
+void getRoute() {
+  connect(); 
+  client.println("GET /api/getRoute/lkim7619 HTTP/1.1");
+  client.println("Host: 3.250.38.184");
+  client.println("Connection: close");
+  client.println();
+  r1 = readResponse();
+  s1 = getResponseBody(r1);
+  client.stop();
+  convertArray(s1) ;
+
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class Graph {
@@ -74,8 +183,8 @@ class Graph {
         for (int i = 0; i < 8; ++i) {
             for (int j = 0; j < 8; ++j) {
                 adjMatrix[i][j] = 0;
-                dir[i][j] = 0;
-                finalDir[i][i] = 0;
+                dir[i][j] = -1;
+                finalDir[i][j] = -1;
             }
         }
     }
@@ -83,13 +192,17 @@ class Graph {
     // Adds weighted edge to graph for connections between nodes
     void addEdge (unsigned int v, unsigned int w, int weight, int initialDir, int finalDire) {
       if (v < 8 && w < 8) { // Ensures node exists
-        adjMatrix[w][v] = weight;
-        dir[w][v] = initialDir;
-        finalDir[w][v] = finalDire;
+        adjMatrix[v][w] = weight;
+        dir[v][w] = initialDir;
+        finalDir[v][w] = finalDire;
       }
       else {
             Serial.println("Error: Vertex out of bounds"); // If node doesn't exist
         }
+    }
+
+    int matrix(int prev, int next) {
+      return adjMatrix[prev][next];
     }
 
     void removeEdge (unsigned int v, unsigned int w) {
@@ -101,7 +214,6 @@ class Graph {
             Serial.println("Error: Vertex out of bounds"); // If node doesn't exist
         }
     }
-
 
     // Prints Adjacency Matrix - only for testing purposes
     void displayMatrix() {
@@ -170,22 +282,6 @@ class Graph {
         printPath(parent, dest, route, index);
     }
 
-    // Print the distance and paths
-    /*
-    void printSolution(int dist[], int parent[], int src, int dest) {
-        Serial.println("Vertex\tDistance\tPath");
-        Serial.print(dest);
-        Serial.print("\t");
-        Serial.print(dist[dest]);
-        Serial.print("\t\t");
-        int index = 0;
-        printPath(parent, dest, route, index);
-        Serial.println();
-    }
-    */
-
-
-    // Prints the shortest path - uses parent array
     void printPath(int parent[], int j, int route[], int &index) {
         if (parent[j] == -1) {
             route[index++] = j;
@@ -205,38 +301,25 @@ Graph g; // Creates Graph
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void getRoute() {
-  connect(); 
-  client.println("GET /api/getRoute/lkim7619 HTTP/1.1");
-  client.println("Host: 3.250.38.184");
-  client.println("Connection: close");
-  client.println();
-  r = readResponse();
-  s = getResponseBody(r);
-  Serial.print("Full Route:");
-  Serial.println(s);
-  
-}
-
 void convertArray(String data) {
   routeSize = 0;  
   int startIndex = 0, endIndex;
 
   while ((endIndex = data.indexOf(',', startIndex)) != -1 && routeSize < 10) {
-    route[routeSize++] = data.substring(startIndex, endIndex).toInt();
+    serverRoute[routeSize++] = data.substring(startIndex, endIndex).toInt();
     startIndex = endIndex + 1;
   }
 
   if (startIndex < data.length() && routeSize < 10) {
-    route[routeSize++] = data.substring(startIndex).toInt();
+   serverRoute[routeSize++] = data.substring(startIndex).toInt();
   }
 
   for (int i = routeSize; i < 10; i++) {
-    route[i] = -1;
+    serverRoute[i] = -1;
   }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 void pid(){
   int error = (analogRead(pins[1])-analogRead(pins[3]));
@@ -265,258 +348,323 @@ void pid(){
     RSP = -0;
   }
   motors.setSpeeds(RSP, LSP); // switch to deviate toward/away from line
-
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
   void followLine() {
+    motors.setSpeeds(Speed, Speed);
+    delay(200);
 
     while(true) {
       if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
-      motors.setSpeeds(50, turnSpeed);
-    } 
-    //Right turn
-    else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
-      motors.setSpeeds(turnSpeed, 50);
-    }
-    //NODE Code
-    else if (analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold && analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold && analogRead(pins[2]) < threshold)  {
-      Serial.print("Node ");
-      //while(analogRead(pins[0]) < threshold && analogRead(pins[4]) < threshold && analogRead(pins[1]) < threshold && analogRead(pins[3]) < threshold){
-
-      //}
-      for (int i; i < 1000; i++ ) {
-      }
-      motors.setSpeeds(0, 0); //stop
-      delay(200);
-      break;
-    }
-    // Regular line follow using PID or otherwise
-    else if (analogRead(pins[2]) < threshold || analogRead(pins[1]) < threshold || analogRead(pins[3]) < threshold) {
-      //Kp = 0.0006 * (1000 - analogRead(pins[2]));
-      Kd = 0; 
-      Ki = 0;
-      Kp = 0.1; // Speed variable / (Max sensor Reading / 2)
-      pid(); // To be implemented
-    }
-
-    for (int i = 0; i < 5; i++) {
-        analogValue[i] = analogRead(analogPin[i]);
-        //Serial.print(analogValue[i]);
-        //Serial.print("\t");
+        motors.setSpeeds(50, turnSpeed);
       } 
-      //Serial.println("");
+      //Right turn
+      else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
+        motors.setSpeeds(turnSpeed, 50);
+      }
+      //NODE Code
+      else if (analogRead(pins[1]) < threshold && analogRead(pins[2]) < threshold && analogRead(pins[3]) < threshold ) {
+        if (nodeFlag) {
+          motors.setSpeeds(0, 0);
+          digitalWrite(ledPin1, HIGH);
+          digitalWrite(ledPin2, HIGH);
+          nodeFlag = false;
+        }
+        else {
+          delay(50);
+        }
+        break;
+      }
+
+      else if (analogRead(pins[2]) < threshold || analogRead(pins[1]) < threshold || analogRead(pins[3]) < threshold) {
+        Kd = 0; 
+        Ki = 0;
+        Kp = 0.1; // Speed variable / (Max sensor Reading / 2)
+        pid(); // To be implemented
+      }
+
+      if (analogRead(SENSOR_PIN) > 3300) {
+        Serial.println(analogRead(SENSOR_PIN));
+        motors.setSpeeds(0, 0);
+        digitalWrite(ledPin1, HIGH);
+        digitalWrite(ledPin2, HIGH);
+        obstacleFlag = true;
+        break;
+      }
+
+      for (int i = 0; i < 5; i++) {
+          analogValue[i] = analogRead(analogPin[i]);
+      } 
+    }
   }
+
+  void followSensorLine() {
+    while(true) {
+      if (analogRead(pins[0]) < threshold && analogRead(pins[4]) > threshold) {
+        motors.setSpeeds(50, turnSpeed);
+      }
+
+      //Right turn
+      else if (analogRead(pins[0]) > threshold && analogRead(pins[4]) < threshold) {
+        motors.setSpeeds(turnSpeed, 50);
+      }
+
+      else if (analogRead(pins[1]) < threshold && analogRead(pins[3]) > threshold) {
+        motors.setSpeeds(100, -100);
+      }
+
+      else if (analogRead(pins[3]) < threshold && analogRead(pins[1]) > threshold) {
+        motors.setSpeeds(-100, 100);
+      }
+
+      else if (analogRead(pins[2]) < threshold && analogRead(pins[1]) < threshold) {
+        motors.setSpeeds(100, -100);
+      }
+      
+      else if (analogRead(pins[3]) < threshold && analogRead(pins[2]) < threshold) {
+        motors.setSpeeds(-100, 100);
+      }
+      
+      // Regular line follow using PID or otherwise
+      else if (analogRead(pins[2]) < threshold && analogRead(pins[3]) > threshold && analogRead(pins[1]) > threshold) {
+        motors.setSpeeds(0, 0);
+      }
+
+      if (analogRead(pins[0]) > threshold && analogRead(pins[4]) > threshold && analogRead(pins[1]) > threshold && analogRead(pins[3]) > threshold && analogRead(pins[2]) > threshold) {
+        break;
+      }
+
+      for (int i = 0; i < 5; i++) {
+        analogValue[i] = analogRead(analogPin[i]);
+      } 
+      delay(1);
+    }
+    Speed = 300;
   }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-void setGyroAng(int targetAngle, int prev, int next) {
-
+void setTimeAng(int targetAngle, int prev, int next) {
     if (targetAngle == yaw) {
         return;  // Exit if already at the target angle
     }
 
+    motors.setSpeeds(100, 100); 
+    delay(700);
+    motors.setSpeeds(0, 0);
+    delay(200);
 
     int angleDifference = targetAngle - yaw;  
-
-    if (angleDifference > 180) {
+   while (angleDifference > 180) {
         angleDifference -= 360;
-    } 
-    else if (angleDifference < -180) {
+    }
+    while (angleDifference < -180) {
         angleDifference += 360;
     }
 
-
     int turnDirection = (angleDifference > 0) ? 1 : -1; // 1 = Right, -1 = Left
-    int nodeCount = 0;
-    int nodes = 0;
-    
-    if (abs(angleDifference) == 180) {
-      nodes = 2;
-    }
-    else {
-      nodes = abs(angleDifference/90) - 1;
-    }
 
+    int nodes = (abs(angleDifference)/90);
+    int turnTime = nodes * 800;
 
-    while (analogRead(analogPin[2]) < threshold) {
-    if (turnDirection == 1) {
-          motors.setSpeeds(-200, 200);
-    }
-    else {
-        motors.setSpeeds(200, -200);         
-    }
-  }
-
-      Serial.print("Node Count before while loop = ");
-      Serial.println(nodeCount);
-      Serial.print("Nodes= ");
-      Serial.println(nodes);
-      
     // Start turning
-    while(nodeCount <= nodes) {
+    if (nodes != 0) { // double check calculation
         if (turnDirection == 1) {
-          motors.setSpeeds(-200, 200);
+          motors.setSpeeds(200, -200);
+          delay(turnTime);
         } 
-        else {
-          motors.setSpeeds(200, -200);
-        }
-      
-
-      while (analogRead(analogPin[2]) <= 1000) {
-        if (turnDirection == 1) {
+        else  {
           motors.setSpeeds(-200, 200);
-        } 
-        else {
-          motors.setSpeeds(200, -200);
-        }
-        delay(300);  // Small delay to avoid false detections
-        nodeCount++;
-      }
-    }
-
-     // Wait for calculated turn time
-
-    // Continue adjusting until a sensor detects a line
-
-
-    while (analogRead(analogPin[2]) >= 1000 ) {
-        // Keep turning
-        if (turnDirection == 1) {
-          motors.setSpeeds(200, -200);
-        
-        } else {
-          motors.setSpeeds(-200, 200);
+          delay(turnTime);
         }
     }
 
-    //yaw = (targetAngle + 360) % 360;
-
-    // Stop motors once a sensor detects a line
-    motors.setM1Speed(0);
-    motors.setM2Speed(0);
-    delay(100); // Small pause
-
-    // Adjust yaw estimation (since there's no gyro, update manually)
-    yaw = g.returnFinalDir(next, prev);
-    
-
-    Serial.println("Yaw Target Achieved");
-
+    motors.setSpeeds(0, 0);
     delay(500); // Small delay before following the line
 }
 
-
 void path(int prev, int next) {
-    int angle = g.returnInitialDir(next, prev);
-    setGyroAng(angle, prev, next);
-    if (next == 7) {
+    int angle = g.returnInitialDir(prev, next);
+    setTimeAng(angle, prev, next);
+
+    if (next == 5) {
+      followSensorLine();
       checkParkingSensor();
     }
     else {
       followLine();
     }
+    yaw = g.returnFinalDir(prev, next);
 }
 
 void serverPath(int prev, int next) {
   int route[10];
   int a = 0;
   int b = 1;
-  for(int k = 0; k < 10; k++) {
+  display.clearDisplay();
+
+  for (int k = 0; k < 10; k++) { 
     route[k] = -1;
   }
+
   g.dijkstra(prev, next, route);
-  while(route[b] != -1) {
+  
+  while (route[b] != -1) {
+    
+    if (route[b] == next) {
+      nodeFlag = true;
+    }
     path(route[a], route[b]);
+    
+    if (obstacleFlag == true) {
+      g.removeEdge(route[a], route[b]);
+      motors.setSpeeds(200, -200);
+      nodeFlag = true;
+      delay(1600);
+      followLine();
+      nodeFlag = false;
+
+      yaw = g.returnFinalDir(route[b], route[a]);
+
+      int redirectRoute[10]; 
+      for (int k = 0; k < 10; k++) {
+        redirectRoute[k] = -1;
+      }
+      g.dijkstra(route[a], next, redirectRoute);
+
+      for (int i = 0; i < 10; i++) {
+        route[i] = redirectRoute[i];
+      }
+      a = -1;
+      b = 0;
+
+      obstacleFlag = false;
+    }
+    
     a++;
     b++;
   }
-  //serverAtNextNode();
+  display.println(next);
+  updateServer();
+  motors.setSpeeds(0, 0); 
+  digitalWrite(ledPin1, HIGH);
+  digitalWrite(ledPin2, HIGH);
+  nodeFlag = false;
+  delay(200);
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void checkParkingSensor() {  
+  Serial.println("Entering wall detection mode...");
+  motors.setSpeeds(282, 300);  
 
+  while (true) {
+    int sensorValue = analogRead(SENSOR_PIN);  
+    Serial.print("Sensor Value: ");
+    Serial.println(sensorValue);
 
-// Function to check parking sensor and activate buzzer accordingly
-void checkParkingSensor() {
+    beepBuzzer(sensorValue);
 
-  int OBSTACLE_THRESHOLD = 3200;  // 3500 for spare, normal is 1500 
-  int CLOSE_RANGE = 3200;
-  int MID_RANGE = 3000;
-  int FAR_RANGE = 2900;
-
-  int sensorValue = analogRead(SENSOR_PIN);  // Read sensor value
-  int beepDelay = 0; // Time between beeps
-
-  motors.setSpeeds(300, 300);
-
-  // Adjust beep frequency based on distance
-  while(true) {
-    if (sensorValue > OBSTACLE_THRESHOLD) {
-      Serial.println("Too Close!");
-      beepDelay = 100;  // Fastest beep (closest range)
-    } 
-    else if (sensorValue > CLOSE_RANGE) {
-      Serial.println("Very Close!");
-      beepDelay = 250;
-      motors.setSpeeds(0, 0);
+    if (sensorValue > obstacleThreshold) {
+      Serial.println("Wall detected! Stopping permanently...");
+      motors.setSpeeds(0, 0);  // Stop the robot
+      digitalWrite(ledPin1, HIGH);
+      digitalWrite(ledPin2, HIGH);
       break;
     }
-    else if (sensorValue > MID_RANGE) {
-      Serial.println("Close!");
-      beepDelay = 500;
-    }
-    else if (sensorValue > FAR_RANGE) {
-      Serial.println("Approaching..");
-      beepDelay = 1000; // Slowest beep (farthest range)
-    } 
-    else {
-      Serial.println("No obstacle detected.");
-      beepDelay = 0; // No beeping if no obstacle
-    }
-
-    if (beepDelay > 0) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(100);
-    digitalWrite(BUZZER_PIN, LOW);
-    delay(beepDelay - 100);  // Adjust off time based on beep delay
-    } 
     
-    else {
-    delay(500);  // Default delay when no obstacle
-    }
+    delay(100);  
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void beepBuzzer(int sensorValue) {
+  static unsigned long lastToggleTime = 0;
+  static bool buzzerOn = false;
+  unsigned long currentTime = millis();
   
+  // Define on/off durations based on sensor reading 
+  unsigned long onDuration = 0;
+  unsigned long offDuration = 0;
+  
+  if (sensorValue > 2000) {       // Too close: almost continuous beep
+    onDuration = 200;             // Buzzer on for 200ms
+    offDuration = 50;             // Off for 50ms
+  } 
+  else if (sensorValue > 500) {  // Very close: rapid beeping
+    onDuration = 100;             // On for 100ms
+    offDuration = 100;  
+  }
+  else if (sensorValue < 500) {  // Close: moderate beeping
+    onDuration = 70;              // On for 70ms
+    offDuration = 180; 
+  }
+  
+  else {
+    // No obstacle
+    digitalWrite(BUZZER_PIN, LOW);
+  //  digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+    return;
+  }
+  
+  // Toggle buzzer state based on elapsed time 
+  if (buzzerOn && (currentTime - lastToggleTime >= onDuration)) {
+    digitalWrite(BUZZER_PIN, LOW);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = false;
+    lastToggleTime = currentTime;
+  }
+  else if (!buzzerOn && (currentTime - lastToggleTime >= offDuration)) {
+    digitalWrite(BUZZER_PIN, HIGH);
+   // digitalWrite(LED_PIN, LOW);
+    buzzerOn = true;
+    lastToggleTime = currentTime;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void setup() {
     Serial.begin(115200);
-
+    delay(1000);
+    motors.setSpeeds(0, 0);
+    
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
 
-    motors.setSpeeds(0, 0);
-    delay(1000);
+    // Initialize OLED DISPLAY
+
+    // initial message
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(1, 20);
+    display.println("Starting..");
+    display.display();
+
+    pinMode(ledPin1, OUTPUT);
+    pinMode(ledPin2, OUTPUT);
 
     pinMode(motor1PWM,OUTPUT);
     pinMode(motor1Phase,OUTPUT);
     pinMode(motor2PWM,OUTPUT);
     pinMode(motor2Phase,OUTPUT);
 
-    
-    //getRoute();
-    
+    connectToWiFi();
+    getRoute();
+
+    //HeadServo.attach(servoPin);
+    //HeadServo.write(90);
+    delay(500);  
+
     g.addEdge(0, 6, 78, 0, 270);
     g.addEdge(6, 0, 78, 90, 180);
     g.addEdge(0, 4, 80, 180, 180);
@@ -534,23 +682,31 @@ void setup() {
     g.addEdge(4, 7, 150, 180, 270);
     g.addEdge(7, 4, 150, 90, 0);
     g.addEdge(7, 5, 1, 180, 180);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
-     
-
-    Serial.print("Adjacency Matrix:");
-    g.displayMatrix();
-  
 
     for (int i = 0; i < 5; i++) {
-    pinMode(analogPin[i], INPUT);  // Sensor pins setup
-  }
-    
+      pinMode(analogPin[i], INPUT);  // Sensor pins setup
+    }
+
+    postBody="position=";
+    position="0";
+    postBody += position;
+    nodeFlag = true;
+    followLine();
+    nodeFlag = false;
+    updateServer();
 }
 
+
 void loop() {
+
   while (serverRoute[j] != -1) {
     serverPath(serverRoute[i], serverRoute[j]);
     i++;
     j++;
+  }
+
+  while(true) {
+    delay(1000);
   }
 
 }
