@@ -512,10 +512,6 @@ void serverPath(int prev, int next) {
   int route[10];
   int a = 0;
   int b = 1;
-  display.clearDisplay();
-  display.setTextSize(2);
-  display.setTextColor(SSD1306_WHITE);
-  display.setCursor(10, 20);
   digitalWrite(ledPin1, LOW);
   digitalWrite(ledPin2, LOW);
 
@@ -561,8 +557,6 @@ void serverPath(int prev, int next) {
     b++;
     
   }
-  display.println(next);
-  display.display();
   updateServer();
   motors.setSpeeds(0, 0); 
   digitalWrite(ledPin1, HIGH);
@@ -666,10 +660,7 @@ void setup() {
 
     // initial message
     display.clearDisplay();
-    display.setTextSize(2);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(1, 20);
-    display.println("Starting..");
+    display.fillScreen(SSD1306_WHITE);
     display.display();
 
     pinMode(ledPin1, OUTPUT);
