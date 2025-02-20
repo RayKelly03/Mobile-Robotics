@@ -512,6 +512,9 @@ void serverPath(int prev, int next) {
   int route[10];
   int a = 0;
   int b = 1;
+  display.clearDisplay();
+  digitalWrite(ledPin1, LOW);
+  digitalWrite(ledPin2, LOW);
 
   for (int k = 0; k < 10; k++) { 
     route[k] = -1;
@@ -555,7 +558,7 @@ void serverPath(int prev, int next) {
     b++;
     
   }
-  
+  display.println(next);
   updateServer();
   motors.setSpeeds(0, 0); 
   digitalWrite(ledPin1, HIGH);
@@ -647,6 +650,23 @@ void setup() {
     
     pinMode(BUZZER_PIN, OUTPUT);
     digitalWrite(BUZZER_PIN, LOW);
+
+        // Initialize OLED DISPLAY
+    Wire.begin(I2C_SDA, I2C_SCL);
+  
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+      Serial.println(F("SSD1306 allocation failed"));
+      for (;;);
+    }
+    
+
+    // initial message
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(1, 20);
+    display.println("Starting..");
+    display.display();
 
     pinMode(ledPin1, OUTPUT);
     pinMode(ledPin2, OUTPUT);
