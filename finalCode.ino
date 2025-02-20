@@ -513,6 +513,9 @@ void serverPath(int prev, int next) {
   int a = 0;
   int b = 1;
   display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
   digitalWrite(ledPin1, LOW);
   digitalWrite(ledPin2, LOW);
 
@@ -559,6 +562,7 @@ void serverPath(int prev, int next) {
     
   }
   display.println(next);
+  display.display();
   updateServer();
   motors.setSpeeds(0, 0); 
   digitalWrite(ledPin1, HIGH);
