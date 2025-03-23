@@ -694,7 +694,7 @@ void setup() {
     g.addEdge(7, 3, 150, 270, 0);
     g.addEdge(4, 7, 150, 180, 270);
     g.addEdge(7, 4, 150, 90, 0);
-    g.addEdge(7, 5, 1, 180, 180);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between)
+    g.addEdge(7, 5, 1, 180, 180);   // Creates Adjacency Matrix in format : addEdge(Node A, Node B, distance between, initial angle, final angle)
 
     for (int i = 0; i < 5; i++) {
       pinMode(analogPin[i], INPUT);  // Sensor pins setup
